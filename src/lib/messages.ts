@@ -73,6 +73,8 @@ export function claimMessage(reason: string): string {
   const r = reason.toLowerCase();
   if (r.includes("locked")) return "The unit is locked for a minute after three wrong tries. Wait a minute, then try again.";
   if (r.includes("expired") || r.includes("ticket")) return "The setup ticket was not accepted or has expired. Go back one step and try again to get a fresh one.";
+  // the hub answers 409 when this unit already belongs to another device (a unit can belong to one device at a time)
+  if (r.includes("(409)") || r.includes("already assigned")) return "This unit is already linked to a different device, and it can belong to only one. Ask an admin to release it from the other device, then try again.";
   if (r.includes("clock") || r.includes("time")) return "The unit's clock is not set yet. Check the Wi-Fi connection and try again.";
   if (r.includes("wi-fi") || r.includes("wifi") || r.includes("network")) return "The unit has no internet. Check the Wi-Fi step first.";
   return reason;

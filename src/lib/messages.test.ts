@@ -40,4 +40,10 @@ describe("claim messages", () => {
     expect(claimMessage("the ticket was not accepted")).toMatch(/fresh one/);
     expect(claimMessage("something new")).toBe("something new");
   });
+
+  it("explains a unit that already belongs to another device (the hub's 409)", () => {
+    expect(claimMessage("the hub refused the claim (409)")).toMatch(/already linked to a different device/);
+    expect(claimMessage("the hub refused the claim (409)")).toMatch(/Ask an admin to release/);
+    expect(claimMessage("the hub refused the claim (500)")).toBe("the hub refused the claim (500)");
+  });
 });
