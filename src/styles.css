@@ -67,7 +67,10 @@ a { color: var(--primary); }
 .side { background: var(--bg); border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh; height: 100dvh; display: flex; flex-direction: column; overflow-y: auto; }
 .side .brand { padding: 18px 18px 14px; }
 .logo { display: block; height: 30px; width: auto; }
-.dark .logo.wordmark { background: #fff; border-radius: 8px; padding: 4px 8px; height: 38px; }
+.wordmark { display: inline-block; line-height: 0; }
+.logo-dark { display: none; }
+.dark .logo-light { display: none; }
+.dark .logo-dark { display: block; }
 .nav { padding: 6px 10px 16px; flex: 1; }
 .nav-group { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 16px 10px 6px; font-weight: 600; }
 .nav-item { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 10px; border: 0; border-radius: var(--radius); background: transparent; cursor: pointer; color: var(--fg); min-height: 40px; }

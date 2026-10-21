@@ -52,9 +52,14 @@ export function Stepper({ stage }: { stage: Stage }) {
   );
 }
 
-/** The WayTara wordmark (the same logo file as the dashboard). On the dark theme it sits on a light chip so "ENERGY" stays readable. */
+/** The WayTara wordmark on a transparent background. The dark theme gets a copy whose "ENERGY" is light, so it stays readable with no backing. */
 export function Wordmark({ className = "" }: { className?: string }) {
-  return <img className={`logo wordmark ${className}`} src="/logo.png" alt="WayTara Energy" width={140} height={30} />;
+  return (
+    <span className={`wordmark ${className}`}>
+      <img className="logo logo-light" src="/logo.png" alt="WayTara Energy" width={140} height={30} />
+      <img className="logo logo-dark" src="/logo-dark.png" alt="" aria-hidden width={140} height={30} />
+    </span>
+  );
 }
 
 /** One small line icon per page, drawn here so the page needs no icon library. */
