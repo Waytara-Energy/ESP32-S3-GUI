@@ -10,11 +10,10 @@ interface Point {
 
 /** What a person should know before using the page. */
 const POINTS: Point[] = [
-  { icon: "units", title: "Find your unit by Bluetooth", text: "Stand next to the unit. It appears on the radar by itself; pick it there." },
-  { icon: "key", title: "Your account decides what you can do", text: "Customers see their unit and its Wi-Fi. WayTara staff work on the sites they are assigned to." },
-  { icon: "setup", title: "Setting up a new unit?", text: "Hold the BOOT button on the unit for 3 seconds to open its setup, then sign in here." },
-  { icon: "network", title: "Use Chrome or Edge", text: "On an Android phone or a computer, over https. Safari and iPhones cannot use Bluetooth." },
-  { icon: "lock", title: "Private by design", text: "The link to the unit is encrypted. Wi-Fi passwords go straight to the unit and are never kept." },
+  { icon: "units", title: "Find your unit", text: "Stand next to it. It shows up on the radar by itself." },
+  { icon: "key", title: "Your account sets your access", text: "Customers see their unit and Wi-Fi. Staff work on their assigned sites." },
+  { icon: "setup", title: "New unit?", text: "Hold the BOOT button for 3 seconds, then sign in." },
+  { icon: "network", title: "Chrome or Edge", text: "On Android or a computer. Safari and iPhones cannot use Bluetooth." },
 ];
 
 export function SignIn() {
@@ -37,9 +36,11 @@ export function SignIn() {
     <div className="auth">
       <div className="auth-card">
         <section className="auth-info" aria-label="About this page">
-          <img className="auth-logo" src="/logo-dark.png" alt="WayTara Energy" width={140} height={30} />
-          <h2>Unit setup</h2>
-          <p className="auth-lead">Find a WayTara monitoring unit, check it and set it up, from your phone or laptop.</p>
+          <p className="auth-eyebrow">Unit setup</p>
+          <h2>
+            <span>Find it.</span> <span>Check it.</span> <span>Set it up.</span>
+          </h2>
+          <p className="auth-lead">Work with your WayTara monitoring unit from your phone or laptop.</p>
           <ul className="auth-points">
             {POINTS.map((p) => (
               <li key={p.title}>
@@ -53,6 +54,9 @@ export function SignIn() {
               </li>
             ))}
           </ul>
+          <p className="auth-note">
+            <Icon name="lock" size={15} /> The link to the unit is encrypted. Wi-Fi passwords are never kept.
+          </p>
         </section>
 
         <section className="auth-form">
@@ -76,8 +80,8 @@ export function SignIn() {
                 {busy ? <Spinner label="Signing in" /> : "Sign in"}
               </button>
             </div>
-            <p className="sub auth-foot">© {new Date().getFullYear()} WayTara Energy</p>
           </form>
+          <p className="sub auth-foot">© {new Date().getFullYear()} WayTara Energy</p>
         </section>
       </div>
     </div>
