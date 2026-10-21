@@ -29,6 +29,35 @@ export function demoServices(): Services {
         { id: "33333333-3333-4333-8333-333333333333", site: "Waytara Office", name: "Inverter 1", model: null },
       ];
     },
+    scanCapabilities: () => ({ remembered: true, everyUnit: !location.search.includes("noscan") }),
+    // units appear on the radar one after another, as they would be heard; the signal wobbles a little
+    async startScan(onHeard) {
+      const units = [
+        { id: "u1", name: "WayTara-5505D0", rssi: -58, device: {} },
+        { id: "u2", name: "WayTara-A1B2C3", rssi: -78, device: null },
+        { id: "u3", name: "WayTara-77F0E1", rssi: -88, device: {} },
+      ];
+      const timers = units.map((u, i) => {
+        let t: ReturnType<typeof setInterval>;
+        const start = setTimeout(() => {
+          onHeard(u);
+          t = setInterval(() => onHeard({ ...u, rssi: u.rssi + Math.round(Math.random() * 6 - 3) }), 1000);
+        }, 1200 + i * 1500);
+        return () => {
+          clearTimeout(start);
+          clearInterval(t);
+        };
+      });
+      return { stop: () => timers.forEach((s) => s()), listening: { remembered: true, everyUnit: !location.search.includes("noscan") } };
+    },
+    async allowUnit() {
+      await pause(500);
+      return { id: "u2", name: "WayTara-A1B2C3", rssi: -60, device: {} };
+    },
+    async renameDevice(_id, label) {
+      await pause(400);
+      return label.trim();
+    },
     async connectUnit() {
       await pause(900);
       const unit = await fakeUnit({ delayMs: 400, level: 0, claimedAs: EQ, hw: "2884855505D0" });

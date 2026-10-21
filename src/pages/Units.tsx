@@ -1,6 +1,5 @@
-import { useServices } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, Spinner } from "@/ui";
+import { Notice, PageHead } from "@/ui";
 
 const ago = (t: number): string => {
   const m = Math.round((Date.now() - t) / 60_000);
@@ -11,56 +10,37 @@ const ago = (t: number): string => {
   return `${Math.round(h / 24)} days ago`;
 };
 
-/** Find a unit: one button scans for every WayTara unit in range, and the units opened before are listed for one-tap return. */
+/** The unit this page is working with, a way back to the radar, and the units opened before on this browser. */
 export function Units() {
-  const services = useServices();
-  const { connect, connecting, outcome, linkLost, error, unit, remembered, forget, setDevice, go, disconnect } = useApp();
-  const supported = services.bluetoothAvailable();
+  const { unit, offline, disconnect, closeOffline, remembered, forget, openOffline, outcome, linkLost } = useApp();
 
   return (
     <>
-      <PageHead title="Units" sub="Find the monitoring unit you want to work with. Stand next to it; Bluetooth reaches a few metres." />
+      <PageHead title="Units" sub="The unit you are working with, and the units you opened before on this browser." />
 
-      {!supported ? (
-        <Notice kind="bad">
-          This browser cannot use Bluetooth. Open this page in Chrome or Edge on an Android phone or a computer (not Safari, and not any browser on an iPhone), and make sure the address starts with https.
-        </Notice>
-      ) : (
-        <section className="card">
-          <h2>Scan for units</h2>
-          <p className="sub">Your browser shows the WayTara units in range. Choose yours; you are let in according to your account.</p>
-          <div className="actions" style={{ marginTop: 0 }}>
-            <button className="btn primary" onClick={() => void connect()} disabled={connecting}>
-              {connecting ? <Spinner label="Connecting" /> : "Scan for units"}
-            </button>
-            {unit ? (
-              <button className="btn" onClick={disconnect} disabled={connecting}>
-                Disconnect from {unit.name}
-              </button>
-            ) : null}
-          </div>
-          {error ? <Notice kind="bad">{error}</Notice> : null}
-          {linkLost ? <Notice kind="warn">The Bluetooth connection ended. The unit lets go of a phone that is quiet for 5 minutes. Scan again to reconnect.</Notice> : null}
-          {outcome && outcome.kind !== "ready" && outcome.kind !== "cancelled" ? <Notice kind={outcome.kind === "new_unit" ? "info" : "warn"}>{outcome.message}</Notice> : null}
-          {outcome?.kind === "ready" ? (
-            <Notice kind="ok">
-              Connected to {outcome.unit.name} for {outcome.unit.device?.label} at {outcome.unit.device?.site}.
-            </Notice>
-          ) : null}
-          {outcome?.kind === "new_unit" && outcome.unit.level >= 4 ? (
-            <div className="actions">
-              <button className="btn primary" onClick={() => go("setup")}>
-                Set this unit up
-              </button>
-            </div>
-          ) : null}
-        </section>
-      )}
+      <section className="card">
+        <h2>{unit ? `Connected to ${unit.name}` : "Not connected over Bluetooth"}</h2>
+        {unit ? (
+          <p className="sub">
+            {unit.device ? `${unit.device.label} · ${unit.device.site}. ` : ""}
+            Disconnecting takes you back to the radar, where you can pick another unit.
+          </p>
+        ) : (
+          <p className="sub">You are looking at a device without a Bluetooth connection. Go back to the radar to connect to a unit.</p>
+        )}
+        {linkLost ? <Notice kind="warn">The Bluetooth connection ended. The unit lets go of a phone that is quiet for 5 minutes.</Notice> : null}
+        {outcome?.kind === "new_unit" ? <Notice kind="info">{outcome.message}</Notice> : null}
+        <div className="actions">
+          <button className="btn primary" onClick={() => (unit ? disconnect() : offline ? closeOffline() : disconnect())}>
+            {unit ? "Disconnect and scan again" : "Back to the radar"}
+          </button>
+        </div>
+      </section>
 
       <section className="card">
         <h2>Your units</h2>
         {remembered.length === 0 ? (
-          <p className="sub">Units you open appear here, so next time it is one tap.</p>
+          <p className="sub">Units you open appear here.</p>
         ) : (
           <ul className="list">
             {remembered.map((u) => (
@@ -73,19 +53,8 @@ export function Units() {
                   </span>
                 </span>
                 <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {supported ? (
-                    <button className="btn small primary" onClick={() => void connect(u.name)} disabled={connecting}>
-                      Connect
-                    </button>
-                  ) : null}
                   {u.equipmentId && u.label ? (
-                    <button
-                      className="btn small"
-                      onClick={() => {
-                        setDevice({ equipmentId: u.equipmentId!, label: u.label!, site: u.site ?? "" });
-                        go("activity");
-                      }}
-                    >
+                    <button className="btn small" onClick={() => openOffline({ equipmentId: u.equipmentId!, label: u.label!, site: u.site ?? "" })}>
                       Open without Bluetooth
                     </button>
                   ) : null}

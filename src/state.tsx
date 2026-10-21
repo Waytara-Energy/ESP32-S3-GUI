@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { connectFlow, type ConnectedUnit, type ConnectOutcome } from "@/lib/connect-flow";
+import type { HeardUnit } from "@/lib/radar";
 import { NAV, canOpen, type PageId } from "@/lib/roles";
 import { safeStorage } from "@/lib/theme";
 import { forgetUnit, loadUnits, rememberUnit, type RememberedUnit } from "@/lib/units-store";
@@ -16,15 +17,23 @@ export interface AppState {
   /** the device being looked at: that of the connected unit, or one chosen from the remembered list */
   device: Device | null;
   setDevice(d: Device | null): void;
+  /** the device's name was changed: keep the page's copies in step */
+  renamed(label: string): void;
+  /** a device is open without a Bluetooth connection (staff pages that use only the server) */
+  offline: boolean;
+  openOffline(d: Device): void;
+  closeOffline(): void;
   remembered: RememberedUnit[];
   forget(hw: string): void;
   connecting: boolean;
+  /** the unit being connected to, for the radar */
+  connectingId: string | null;
   /** what the last scan found out, in words (a new unit, a unit that is not for this person, no access) */
   outcome: ConnectOutcome | null;
   /** the link ended on its own (the unit lets go of a quiet phone after 5 minutes) */
   linkLost: boolean;
   error: string | null;
-  connect(preferName?: string): Promise<void>;
+  connect(target: HeardUnit): Promise<void>;
   disconnect(): void;
   /** re-reads the unit's own account of itself (after Wi-Fi or setup changes) */
   refreshUnit(): Promise<void>;
@@ -50,6 +59,8 @@ export function AppProvider({ userId, email, children }: { userId: string; email
   const [device, setDevice] = useState<Device | null>(null);
   const [remembered, setRemembered] = useState<RememberedUnit[]>(() => loadUnits(safeStorage(), userId));
   const [connecting, setConnecting] = useState(false);
+  const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
   const [outcome, setOutcome] = useState<ConnectOutcome | null>(null);
   const [linkLost, setLinkLost] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,25 +91,34 @@ export function AppProvider({ userId, email, children }: { userId: string; email
     setUnit(null);
     setOutcome(null);
     setLinkLost(false);
+    setOffline(false);
+    setDevice(null);
+    location.hash = "";
   }, []);
 
   // leaving the page (or signing out) lets go of the unit
   useEffect(() => () => unitRef.current?.link.disconnect(), []);
 
   const connect = useCallback(
-    async (preferName?: string) => {
+    async (target: HeardUnit) => {
       setConnecting(true);
+      setConnectingId(target.id);
       setError(null);
       setLinkLost(false);
       unitRef.current?.link.disconnect();
       try {
-        const r = await connectFlow(services, preferName);
+        const r = await connectFlow(services, target);
         if (r.kind === "cancelled") return;
         setOutcome(r);
         r.unit.link.onClosed = () => {
           setLinkLost(true);
           setUnit(null);
         };
+        // A unit that lets this person do nothing is not worth a menu of locked pages: stay on the scan screen and say why.
+        if (r.kind !== "ready" && r.unit.level < 1) {
+          r.unit.link.disconnect();
+          return;
+        }
         setUnit(r.unit);
         if (r.unit.device) setDevice(r.unit.device);
         setRemembered(
@@ -111,12 +131,14 @@ export function AppProvider({ userId, email, children }: { userId: string; email
             seenAt: Date.now(),
           }),
         );
-        if (r.kind === "ready") setPage((p) => (p === "units" ? "overview" : p));
-        if (r.kind === "ready") location.hash = "/overview";
+        const first = r.kind === "ready" ? "overview" : "setup";
+        setPage(first);
+        location.hash = `/${first}`;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Could not connect to the unit.");
       } finally {
         setConnecting(false);
+        setConnectingId(null);
       }
     },
     [services, userId],
@@ -143,9 +165,31 @@ export function AppProvider({ userId, email, children }: { userId: string; email
       unit,
       device,
       setDevice,
+      renamed: (label) => {
+        setDevice((d) => (d ? { ...d, label } : d));
+        setUnit((u) => (u && u.device ? { ...u, device: { ...u.device, label } } : u));
+        setRemembered((list) => {
+          const hw = unitRef.current?.hw;
+          const cur = list.find((x) => x.hw === hw);
+          return cur ? rememberUnit(safeStorage(), userId, { ...cur, label }) : list;
+        });
+      },
+      offline,
+      openOffline: (d) => {
+        setDevice(d);
+        setOffline(true);
+        setPage("activity");
+        location.hash = "/activity";
+      },
+      closeOffline: () => {
+        setOffline(false);
+        setDevice(null);
+        location.hash = "";
+      },
       remembered,
       forget: (hw) => setRemembered(forgetUnit(safeStorage(), userId, hw)),
       connecting,
+      connectingId,
       outcome,
       linkLost,
       error,
@@ -153,7 +197,7 @@ export function AppProvider({ userId, email, children }: { userId: string; email
       disconnect,
       refreshUnit,
     }),
-    [userId, email, role, page, go, unit, device, remembered, connecting, outcome, linkLost, error, connect, disconnect, refreshUnit],
+    [userId, email, role, page, go, unit, device, offline, remembered, connecting, connectingId, outcome, linkLost, error, connect, disconnect, refreshUnit],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

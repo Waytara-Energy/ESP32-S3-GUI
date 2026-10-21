@@ -5,6 +5,7 @@
 import { UnitError, type UnitLink, type UnitState } from "@/ble/unit-link";
 import { GatewayApiError } from "./gateway-api";
 import type { Device, Services } from "@/services";
+import type { HeardUnit } from "./radar";
 
 export interface ConnectedUnit {
   link: UnitLink;
@@ -41,8 +42,8 @@ function reasonOf(e: unknown): string {
   return e instanceof Error ? e.message : "Could not get access to the unit.";
 }
 
-export async function connectFlow(services: Services, preferName?: string): Promise<ConnectOutcome> {
-  const s = await services.connectUnit(preferName);
+export async function connectFlow(services: Services, target: HeardUnit): Promise<ConnectOutcome> {
+  const s = await services.connectUnit(target);
   if (!s) return { kind: "cancelled" };
 
   const device = await services.resolveUnit(s.info.hw);

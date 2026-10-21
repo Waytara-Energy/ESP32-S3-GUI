@@ -1,7 +1,8 @@
 import { createContext, useContext } from "react";
 import type { UnitInfo } from "@/ble/unit-link";
 import { UnitLink } from "@/ble/unit-link";
-import { connectToUnit, webBluetoothAvailable } from "@/ble/web-bluetooth";
+import { BluetoothCancelled, allowUnit, openDevice, scanCapabilities, startRadar, webBluetoothAvailable, type BluetoothDeviceLike, type ScanCapabilities } from "@/ble/web-bluetooth";
+import type { HeardUnit } from "@/lib/radar";
 import { GATEWAY_URL } from "@/lib/config";
 import { createGatewayClient, type BleGrant, type DecodedValue, type IntervalInfo, type RotationInfo } from "@/lib/gateway-api";
 import { supabase } from "@/lib/supabase";
@@ -53,8 +54,17 @@ export interface Services {
   myRole(): Promise<string | null>;
   /** the inverters this person may set a monitoring unit up for (the database decides which ones they can see) */
   listEquipment(): Promise<Equipment[]>;
-  /** asks the person to choose a unit (or, given a remembered name, only that one), connects and agrees the key; null when they chose none */
-  connectUnit(preferName?: string): Promise<UnitSession | null>;
+  /** what this browser can listen for without showing its own device chooser */
+  scanCapabilities(): ScanCapabilities;
+  /** starts the radar: calls `onHeard` for every unit heard, with no click and no browser chooser */
+  startScan(onHeard: (h: HeardUnit) => void): Promise<{ stop: () => void; listening: ScanCapabilities }>;
+  /** the browser's own chooser, once per unit per browser (it cannot be skipped): the unit is then remembered and the radar hears it */
+  allowUnit(name?: string): Promise<HeardUnit | null>;
+  /** connects to a unit the person picked on the radar and agrees the key. A unit the browser may open by itself opens at once; any other
+   *  needs the browser's one-time confirmation first. null when the person cancels it. */
+  connectUnit(target: HeardUnit): Promise<UnitSession | null>;
+  /** changes the device's name (who may is the database's rule); returns the name as stored */
+  renameDevice(equipmentId: string, label: string): Promise<string>;
   /** the device a unit belongs to, if this person may see it (a unit that is unknown and one at somebody else's site look the same) */
   resolveUnit(hardwareId: string): Promise<Device | null>;
   /** a two-minute pass for this person on this unit's current Bluetooth connection */
@@ -109,16 +119,33 @@ export const realServices: Services = {
       .map((d) => ({ id: d.id, site: d.site?.name ?? "Unnamed site", name: d.label?.trim() || d.device_type?.name || "Inverter", model: d.device_type?.model_number ?? null }))
       .sort((a, b) => a.site.localeCompare(b.site) || a.name.localeCompare(b.name));
   },
-  async connectUnit(preferName) {
+  scanCapabilities,
+  startScan: (onHeard) => startRadar(onHeard),
+  async allowUnit(name) {
     try {
-      const { transport, name } = await connectToUnit(preferName);
+      const d = await allowUnit(name);
+      return { id: d.id ?? d.name ?? "unit", name: d.name ?? "WayTara unit", rssi: null, device: d };
+    } catch (e) {
+      if (e instanceof BluetoothCancelled) return null;
+      throw e;
+    }
+  },
+  async connectUnit(target) {
+    try {
+      const device = (target.device as BluetoothDeviceLike | null) ?? (await allowUnit(target.name));
+      const { transport, name } = await openDevice(device);
       const link = new UnitLink(transport);
       const info = await link.connect();
       return { link, info, name };
     } catch (e) {
-      if (e instanceof Error && e.name === "BluetoothCancelled") return null;
+      if (e instanceof BluetoothCancelled) return null;
       throw e;
     }
+  },
+  async renameDevice(equipmentId, label) {
+    const { data, error } = await supabase.rpc("rename_device", { p_equipment: equipmentId, p_label: label });
+    if (error) throw new Error(error.message.includes("1 to 60") ? "The name must be 1 to 60 characters." : "You cannot rename this device.");
+    return String(data);
   },
   async resolveUnit(hardwareId) {
     const { data, error } = await supabase.rpc("my_unit_by_hardware", { p_hardware_id: hardwareId });

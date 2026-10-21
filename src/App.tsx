@@ -4,6 +4,7 @@ import { configured } from "@/lib/config";
 import { supabase } from "@/lib/supabase";
 import { applyTheme, readTheme } from "@/lib/theme";
 import { Activity } from "@/pages/Activity";
+import { DeviceName } from "@/pages/DeviceName";
 import { Interval } from "@/pages/Interval";
 import { Key } from "@/pages/Key";
 import { Live } from "@/pages/Live";
@@ -15,6 +16,7 @@ import { Setup } from "@/pages/Setup";
 import { Status } from "@/pages/Status";
 import { Units } from "@/pages/Units";
 import { ServicesContext, realServices, type Services } from "@/services";
+import { ScanScreen } from "@/ScanScreen";
 import { Shell } from "@/Shell";
 import { AppProvider, useAllowedPage, useApp } from "@/state";
 import { SignIn } from "@/steps/SignIn";
@@ -41,6 +43,8 @@ function Page() {
       return <Units />;
     case "overview":
       return <Overview />;
+    case "details":
+      return <DeviceName />;
     case "status":
       return <Status />;
     case "network":
@@ -60,6 +64,18 @@ function Page() {
     case "activity":
       return <Activity />;
   }
+}
+
+/** Until a unit has let the person in (or a device is opened without Bluetooth) there is only the radar; then the menu and the pages. */
+function Gate({ onSignOut }: { onSignOut: () => void }) {
+  const { unit, offline } = useApp();
+  return unit || offline ? (
+    <Shell onSignOut={onSignOut}>
+      <Page />
+    </Shell>
+  ) : (
+    <ScanScreen onSignOut={onSignOut} />
+  );
 }
 
 export function App() {
@@ -109,9 +125,7 @@ export function App() {
         <SignIn />
       ) : (
         <AppProvider key={session.user.id} userId={session.user.id} email={session.user.email ?? ""}>
-          <Shell onSignOut={() => void signOut()}>
-            <Page />
-          </Shell>
+          <Gate onSignOut={() => void signOut()} />
         </AppProvider>
       )}
     </ServicesContext.Provider>

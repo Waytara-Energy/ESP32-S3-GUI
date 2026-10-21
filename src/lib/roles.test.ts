@@ -6,7 +6,7 @@ const open = (id: string, c: Ctx) => canOpen(NAV.find((n) => n.id === id)!, c);
 describe("which pages each person can open", () => {
   it("lets a customer with a view-and-Wi-Fi grant see the unit, change the Wi-Fi and read the log, and nothing of the service pages", () => {
     const c: Ctx = { level: 2, role: "customer", hasDevice: true };
-    for (const id of ["units", "overview", "status", "network", "live", "activity"]) expect(open(id, c).ok, id).toBe(true);
+    for (const id of ["units", "overview", "details", "status", "network", "live", "activity"]) expect(open(id, c).ok, id).toBe(true);
     for (const id of ["map", "logs", "setup", "interval", "key"]) expect(open(id, c).ok, id).toBe(false);
     expect(open("interval", c)).toMatchObject({ reason: "For WayTara staff only." });
   });

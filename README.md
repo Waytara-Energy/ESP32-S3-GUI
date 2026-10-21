@@ -40,16 +40,29 @@ iPhone or iPad; the page says so. The address must be `https` (or `localhost`).
 `vercel.json` sets the security headers: a strict Content-Security-Policy that allows only this site, the Supabase project and the hub, and Bluetooth
 for this page only. If the hub or the Supabase project ever moves, change `connect-src` there.
 
+## The radar (what is shown until a unit is connected)
+
+Until a unit has let the person in, the page shows only a radar and nothing else (no menu). It starts by itself, units appear on it as they are heard (nearer the middle the stronger the signal), and the person picks the unit **on the radar**, not in the browser's list. The menu and pages appear after the unit has accepted the person. A unit that gives the person no access (not set up and its setup window closed, set up for a device they cannot see, or a refused grant) keeps them on the radar with a plain message.
+
+What a browser allows, and what it does not:
+
+- A page can never skip the browser's own device window for a unit the browser has not been allowed to use before. That is the browser's security rule, not ours. So the **first time** a unit is used on a browser, press **Add a unit** once and confirm it in the browser's window (it lists only that unit when the unit's name is known). After that the unit is remembered by the browser, appears on the radar by itself (`getDevices` + `watchAdvertisements`) and connects with **no browser window**.
+- A browser with the experimental scan (Chrome flag `chrome://flags/#enable-experimental-web-platform-features`, then restart Chrome) also lists every WayTara unit in range on the radar, new ones included; picking a new one still needs the browser's single confirmation.
+- A browser with neither shows an empty radar and the **Add a unit** button. Safari and iPhones cannot use Web Bluetooth at all.
+
+A device can also be opened without Bluetooth from the radar's footer (the pages that only use the server: Device name, Push interval, Key, Activity log). **Device name** changes the device's name in the database (`rename_device`: the owner, assigned staff and admins; logged).
+
 ## How a person gets into a unit
 
-1. **Scan for units** (or **Connect** on a remembered unit): the browser lists the WayTara units in range; the page connects and agrees an encrypted link with the unit.
+1. The person picks a unit **on the radar**; the page connects and agrees an encrypted link with the unit.
 2. The page asks the database which device the unit belongs to (`my_unit_by_hardware`; a unit that is unknown and one at somebody else's site look the same).
 3. It asks the WayTara server for a **grant** for this person and this very connection (`POST /v1/equipment/:id/ble-grant`, two minutes, bound to the unit's key for this connection) and presents it to the unit (`auth`). The unit checks it by itself with its own key and says which **level** it gives: 1 view, 2 view and Wi-Fi (customer), 3 service (assigned employee or installer), 4 administrator. A unit whose setup window is open (BOOT held 3 seconds) gives level 4 to anyone next to it; that is how a new unit is set up.
 4. The menu opens the pages that level allows; the others show a lock and say why. The unit enforces the level itself, the page only follows it.
 
 | Page | Needs | What it does |
 |---|---|---|
-| Units | – | Scan, remembered units (names and ids only, in this browser), open a device without Bluetooth |
+| Units | – | The connected unit, back to the radar, remembered units (names and ids only, in this browser), open a device without Bluetooth |
+| Device name | signed in, can see the site | Rename the device |
 | Overview | view | Unit and connection summary; restart (service) |
 | Status | view | The unit's own status, refreshed every 5 s |
 | Network | view; Wi-Fi to change | Saved networks, scan, join, forget (logged, never with the password) |

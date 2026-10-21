@@ -1,7 +1,7 @@
 // Who may open which page. The real limits are enforced elsewhere (the unit checks the grant's level, the hub and the database check the
 // person); this decides what the menu offers and says why a page is closed, in plain words.
 
-export type PageId = "units" | "overview" | "status" | "network" | "live" | "map" | "setup" | "interval" | "key" | "logs" | "activity";
+export type PageId = "units" | "details" | "overview" | "status" | "network" | "live" | "map" | "setup" | "interval" | "key" | "logs" | "activity";
 
 export const LEVEL_NAMES: Record<number, string> = { 0: "No access", 1: "View", 2: "View and Wi-Fi", 3: "Service", 4: "Administrator" };
 export const levelName = (n: number): string => LEVEL_NAMES[n] ?? LEVEL_NAMES[0]!;
@@ -28,6 +28,7 @@ const item = (id: PageId, label: string, group: string, o: Partial<NavItem> = {}
 export const NAV: NavItem[] = [
   item("units", "Units", "Find"),
   item("overview", "Overview", "Device", { needsUnit: true, minLevel: 1 }),
+  item("details", "Device name", "Device", { needsDevice: true }),
   item("status", "Status", "Device", { needsUnit: true, minLevel: 1 }),
   item("network", "Network", "Connectivity", { needsUnit: true, minLevel: 1 }),
   item("live", "Live readings", "Data", { needsUnit: true, minLevel: 1 }),

@@ -174,3 +174,34 @@ table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
 .signin { max-width: 440px; margin: 8vh auto 0; padding: 0 16px; }
 .signin .logo { height: 40px; margin: 0 0 20px; }
 .signin .card { margin: 0; }
+
+/* ---- the scan screen: only the radar until a unit has let the person in ---- */
+.scan { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; background: radial-gradient(ellipse at 50% 30%, var(--primary-soft), transparent 60%), var(--bg); }
+.scan-top { display: flex; align-items: center; gap: 10px; padding: 12px var(--gutter); }
+.scan-top .grow { flex: 1; }
+.scan-main { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 8px 16px 32px; text-align: center; }
+.scan-main h1 { font-size: 1.5rem; }
+.scan-list { text-align: left; margin-top: 16px; }
+.scan-note { text-align: left; margin-top: 16px; }
+.scan-foot { margin-top: 18px; font-size: 13px; }
+.radar { position: relative; width: min(100%, 520px); aspect-ratio: 1; margin: 12px auto 4px; border-radius: 50%; overflow: visible; }
+.radar-rings { position: absolute; inset: 0; }
+.radar-rings i { position: absolute; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent); }
+.radar-rings i:nth-child(1) { inset: 0; }
+.radar-rings i:nth-child(2) { inset: 14%; }
+.radar-rings i:nth-child(3) { inset: 28%; }
+.radar-rings i:nth-child(4) { inset: 42%; }
+.radar-beam { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0deg 285deg, color-mix(in srgb, var(--primary) 34%, transparent) 345deg, color-mix(in srgb, var(--primary) 55%, transparent) 360deg); animation: sweep 4s linear infinite; }
+@keyframes sweep { to { transform: rotate(360deg); } }
+.radar-you { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: var(--primary); box-shadow: 0 0 0 6px color-mix(in srgb, var(--primary) 25%, transparent); }
+.blip { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 4px; background: transparent; border: 0; cursor: pointer; padding: 0; animation: pop .45s cubic-bezier(.2, 1.4, .4, 1) both; z-index: 2; }
+.blip .dot { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--primary); color: var(--primary-fg); box-shadow: 0 0 0 5px color-mix(in srgb, var(--primary) 25%, transparent), 0 6px 18px rgba(0, 0, 0, .25); }
+.blip.new .dot { background: var(--surface); color: var(--primary); border: 2px dashed var(--primary); box-shadow: none; }
+.blip:hover:not(:disabled) .dot, .blip:focus-visible .dot { transform: scale(1.08); }
+.blip:focus-visible { outline: 2px solid var(--primary); outline-offset: 4px; border-radius: 12px; }
+.blip .tag { display: flex; flex-direction: column; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 2px 8px; max-width: 150px; line-height: 1.25; }
+.blip .tag strong { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blip .tag small { font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.blip:disabled:not(.busy) { opacity: .45; cursor: default; }
+@keyframes pop { from { transform: translate(-50%, -50%) scale(.2); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .radar-beam { animation: none; opacity: .35; } .blip { animation: none; } }

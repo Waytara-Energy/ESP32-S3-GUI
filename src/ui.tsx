@@ -60,6 +60,7 @@ export function Wordmark({ className = "" }: { className?: string }) {
 /** One small line icon per page, drawn here so the page needs no icon library. */
 const PATHS: Record<string, string> = {
   units: "M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01",
+  details: "M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z",
   overview: "M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z",
   status: "M22 12h-4l-3 9L9 3l-3 9H2",
   network: "M5 12.55a11 11 0 0 1 14.08 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01",
