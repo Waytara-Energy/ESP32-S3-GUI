@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { LogLine } from "@/ble/unit-link";
+import { Page } from "@/components/kit";
 import { useApp } from "@/state";
-import { Notice, PageHead } from "@/ui";
+import { Notice } from "@/ui";
 
 const KEEP = 600;
+
+/** A line that says something went wrong or is worth a look gets a colour. The words, not the colour, are what matters. */
+const kindOf = (t: string): "err" | "warn" | "ok" | "" => (/\b(fail|failed|error|refused|lost|timeout|timed out|dropped)\b/i.test(t) ? "err" : /\b(retry|will retry|paused|not answering|silent|low)\b/i.test(t) ? "warn" : /\b(connected|joined|accepted|set|up)\b/i.test(t) ? "ok" : "");
 
 /** The unit's own log as it happens (service level). The newest 600 lines are kept; nothing is stored anywhere. */
 export function Logs() {
@@ -52,20 +56,26 @@ export function Logs() {
 
   if (!unit) return null;
   return (
-    <>
-      <PageHead title="Live logs" sub="What the unit is doing right now, line by line. The times are the unit's own (milliseconds since it started)." />
-      <div className="toolbar">
-        <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
-          {paused ? "Resume" : "Pause"}
-        </button>
-        <button className="btn small" onClick={() => setLines([])}>
-          Clear
-        </button>
-        <button className="btn small" onClick={download} disabled={lines.length === 0}>
-          Download
-        </button>
-        <span className="sub">{lines.length} lines</span>
-      </div>
+    <Page
+      title="Live logs"
+      sub="What the unit is doing right now, line by line. The number in brackets is the unit's own clock in milliseconds since it started."
+      actions={
+        <>
+          <span className="sub" style={{ fontSize: 13 }}>
+            {lines.length} lines
+          </span>
+          <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
+            {paused ? "Resume" : "Pause"}
+          </button>
+          <button className="btn small" onClick={() => setLines([])}>
+            Clear
+          </button>
+          <button className="btn small" onClick={download} disabled={lines.length === 0}>
+            Download
+          </button>
+        </>
+      }
+    >
       {error ? <Notice kind="bad">{error}</Notice> : null}
       <div
         className="terminal"
@@ -73,13 +83,22 @@ export function Logs() {
         role="log"
         aria-live="off"
         tabIndex={0}
+        style={{ height: "min(68vh, 640px)" }}
         onScroll={(e) => {
           const el = e.currentTarget;
           stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 24;
         }}
       >
-        {lines.length === 0 ? <span className="ln">Waiting for the unit…</span> : lines.map((l) => <span key={l.n} className="ln">{l.text}</span>)}
+        {lines.length === 0 ? (
+          <span className="ln">Waiting for the unit…</span>
+        ) : (
+          lines.map((l) => (
+            <span key={l.n} className={`ln ${kindOf(l.text)}`}>
+              {l.text}
+            </span>
+          ))
+        )}
       </div>
-    </>
+    </Page>
   );
 }

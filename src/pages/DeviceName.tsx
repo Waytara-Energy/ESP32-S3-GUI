@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
+import { Group, Page, Row } from "@/components/kit";
 import { useServices } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, Spinner } from "@/ui";
+import { Notice, Spinner } from "@/ui";
 
 /** The device's name, as the dashboard and every list show it. Whoever can see the site may change it (the database decides); each change is logged. */
 export function DeviceName() {
@@ -36,43 +37,38 @@ export function DeviceName() {
   }
 
   return (
-    <>
-      <PageHead title="Device name" sub="The name shown on the dashboard, in lists and in the activity log." />
-      <form className="card" onSubmit={save}>
-        <label className="field" style={{ maxWidth: 420 }}>
-          <span>Name</span>
-          <input className="input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} disabled={busy} autoComplete="off" />
-        </label>
-        {!valid && name.length > 0 ? <Notice kind="warn">The name must be 1 to 60 characters.</Notice> : null}
-        {saved ? <Notice kind="ok">{saved}</Notice> : null}
-        {error ? <Notice kind="bad">{error}</Notice> : null}
-        <div className="actions">
-          <button className="btn primary" type="submit" disabled={busy || !valid || !changed}>
-            {busy ? <Spinner label="Saving" /> : "Save name"}
-          </button>
-        </div>
+    <Page title="Device name" sub="The name shown on the dashboard, in lists and in the activity log.">
+      <form onSubmit={save}>
+        <Group title="Name" note="Up to 60 characters. Every change is written to the activity log with your name.">
+          <div className="pad">
+            <label className="field" style={{ maxWidth: 440, marginBottom: 0 }}>
+              <span>Device name</span>
+              <input className="input" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} disabled={busy} autoComplete="off" />
+            </label>
+            {!valid && name.length > 0 ? <Notice kind="warn">The name must be 1 to 60 characters.</Notice> : null}
+            {saved ? <Notice kind="ok">{saved}</Notice> : null}
+            {error ? <Notice kind="bad">{error}</Notice> : null}
+          </div>
+          <div className="actions-row">
+            <button className="btn primary" type="submit" disabled={busy || !valid || !changed}>
+              {busy ? <Spinner label="Saving" /> : "Save name"}
+            </button>
+          </div>
+        </Group>
       </form>
 
-      <section className="card">
-        <h2>About this device</h2>
-        <dl className="kv">
-          <dt>Site</dt>
-          <dd>{device.site || "–"}</dd>
-          {unit ? (
-            <>
-              <dt>Monitoring unit</dt>
-              <dd>
-                {unit.name} <span className="sub">· hardware id</span> <span className="mono">{unit.hw}</span>
-              </dd>
-              <dt>Unit firmware</dt>
-              <dd>{unit.fw}</dd>
-            </>
-          ) : null}
-        </dl>
-        <p className="sub" style={{ marginTop: 12 }}>
-          The site's name, address and the device's model are kept by WayTara. Ask your WayTara contact to change them.
-        </p>
-      </section>
-    </>
+      <Group title="About this device" note="The site's name and address and the device's model are kept by WayTara. Ask your WayTara contact to change them.">
+        <Row label="Site" value={device.site || "–"} />
+        {unit ? (
+          <>
+            <Row label="Monitoring unit" value={unit.name} />
+            <Row label="Hardware ID" mono value={unit.hw} />
+            <Row label="Unit firmware" mono value={unit.fw} />
+          </>
+        ) : (
+          <Row label="Monitoring unit" value="Not connected over Bluetooth" />
+        )}
+      </Group>
+    </Page>
   );
 }

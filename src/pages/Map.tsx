@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { Empty, Group, Page, Segmented, Tile, Tiles } from "@/components/kit";
 import { useServices, type MetricInfo } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, Spinner } from "@/ui";
+import { Notice, Spinner } from "@/ui";
 
 interface MapData {
   ver: number;
@@ -19,6 +20,7 @@ export function RegisterMap() {
   const [data, setData] = useState<MapData | null>(null);
   const [metrics, setMetrics] = useState<MetricInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<"r" | "w">("r");
 
   useEffect(() => {
     if (!unit) return;
@@ -46,73 +48,86 @@ export function RegisterMap() {
   const nameOfWrite = (reg: number): string => metrics.filter((m) => m.direction === "write" && m.registers.includes(reg)).map((m) => m.key).join(", ");
 
   if (!unit) return null;
+  const registers = data ? data.reads.reduce((n, r) => n + (r[1] ?? 0), 0) : 0;
+  const fastest = data && data.reads.length > 0 ? Math.min(...data.reads.map((r) => r[2] ?? 0)) : 0;
+
   return (
-    <>
-      <PageHead title="Register map" sub="What the unit reads from the inverter and which settings it is allowed to change. The unit only moves raw numbers; WayTara decodes them." />
+    <Page title="Register map" sub="What the unit reads from the inverter and which settings it is allowed to change. The unit only moves raw numbers; WayTara decodes them.">
       {error ? <Notice kind="bad">{error}</Notice> : null}
       {!data && !error ? <Spinner label="Reading the map from the unit" /> : null}
       {data ? (
         <>
-          <p className="sub">
-            Map version {data.ver}: {data.reads.length} reads, {data.writes.length} settings.
-          </p>
-          <h2>Reads</h2>
-          <div className="table-wrap" style={{ marginBottom: 16 }}>
-            <table className="t">
-              <thead>
-                <tr>
-                  <th>Registers</th>
-                  <th className="num">Count</th>
-                  <th className="num">Every</th>
-                  <th>Values</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.reads.map(([start, count, s]) => (
-                  <tr key={`${start}-${count}`}>
-                    <td className="mono">{range(start!, count!)}</td>
-                    <td className="num">{count}</td>
-                    <td className="num">{every(s!)}</td>
-                    <td className="sub">{namesIn(start!, count!) || "–"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Tiles>
+            <Tile label="Map version" value={data.ver} />
+            <Tile label="Blocks read" value={data.reads.length} sub={`${registers} registers in all`} />
+            <Tile label="Fastest read" value={fastest ? every(fastest) : "–"} />
+            <Tile label="Settings it may change" value={data.writes.length} />
+          </Tiles>
+          <div style={{ margin: "0 0 14px" }}>
+            <Segmented
+              value={tab}
+              onChange={setTab}
+              options={[
+                { id: "r", label: `Reads (${data.reads.length})` },
+                { id: "w", label: `Settings (${data.writes.length})` },
+              ]}
+            />
           </div>
-          <h2>Settings the unit may change</h2>
-          <div className="table-wrap">
-            <table className="t">
-              <thead>
-                <tr>
-                  <th>Register</th>
-                  <th>Bits</th>
-                  <th className="num">Lowest</th>
-                  <th className="num">Highest</th>
-                  <th>Setting</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.writes.map(([reg, mask, lo, hi]) => (
-                  <tr key={`${reg}-${mask}`}>
-                    <td className="mono">{reg}</td>
-                    <td className="mono">{mask === 0xffff ? "all" : `0x${mask!.toString(16)}`}</td>
-                    <td className="num">{lo === -1 ? "–" : lo}</td>
-                    <td className="num">{hi === -1 ? "–" : hi}</td>
-                    <td className="sub">{nameOfWrite(reg!) || "–"}</td>
-                  </tr>
-                ))}
-                {data.writes.length === 0 ? (
+          {tab === "r" ? (
+            <div className="table-wrap">
+              <table className="t">
+                <thead>
                   <tr>
-                    <td colSpan={5} className="sub">
-                      The unit may not change any setting.
-                    </td>
+                    <th>Registers</th>
+                    <th className="num">Count</th>
+                    <th className="num">Every</th>
+                    <th>Values</th>
                   </tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {data.reads.map(([start, count, s]) => (
+                    <tr key={`${start}-${count}`}>
+                      <td className="mono">{range(start!, count!)}</td>
+                      <td className="num">{count}</td>
+                      <td className="num">{every(s!)}</td>
+                      <td className="sub">{namesIn(start!, count!) || "–"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : data.writes.length === 0 ? (
+            <Empty title="No settings" text="The unit is not allowed to change any setting on the inverter." />
+          ) : (
+            <Group note="A setting is written only if its register, the bits and the value are on this list. The unit refuses anything else, whatever it is asked.">
+              <div className="table-wrap" style={{ border: 0, borderRadius: 0 }}>
+                <table className="t">
+                  <thead>
+                    <tr>
+                      <th>Register</th>
+                      <th>Bits</th>
+                      <th className="num">Lowest</th>
+                      <th className="num">Highest</th>
+                      <th>Setting</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.writes.map(([reg, mask, lo, hi]) => (
+                      <tr key={`${reg}-${mask}`}>
+                        <td className="mono">{reg}</td>
+                        <td className="mono">{mask === 0xffff ? "all" : `0x${mask!.toString(16)}`}</td>
+                        <td className="num">{lo === -1 ? "–" : lo}</td>
+                        <td className="num">{hi === -1 ? "–" : hi}</td>
+                        <td className="sub">{nameOfWrite(reg!) || "–"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Group>
+          )}
         </>
       ) : null}
-    </>
+    </Page>
   );
 }

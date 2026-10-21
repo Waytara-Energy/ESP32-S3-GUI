@@ -127,7 +127,7 @@ export function defaults(c: string, req: Record<string, unknown>): Record<string
       return {
         boot: 3, uptime_s: 5400, wifi: true, ssid: "Home", rssi: -55, channel: 6, ip: "192.168.1.40", clock: true, hub: "hub.waytaraenergy.com", hub_link: true,
         inverter_online: true, last_ok_age_s: 2, ok_pct_5min: 100, rounds: 1080, requests_failed: 0, dead_registers: 0, simulated: false,
-        queue_frames: 3, queue_bytes: 900, dropped: 0, seq_sent: 1080, seq_acked: 1077, map_ver: 4, map_requests: 3, map_writes: 2, heap_free: 140000,
+        queue_frames: 3, queue_bytes: 900, dropped: 0, seq_sent: 1080, seq_acked: 1077, map_ver: 4, map_requests: 3, map_writes: 2, heap_free: 31520, heap_largest: 14324, heap_min: 26476, psram_free: 7276040,
       };
     case "map":
       return req.kind === "w"

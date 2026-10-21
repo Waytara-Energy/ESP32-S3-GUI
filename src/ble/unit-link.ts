@@ -113,6 +113,10 @@ export interface UnitStatus {
   map_requests: number;
   map_writes: number;
   heap_free: number;
+  /** the largest block still available, the lowest free memory since the start, and the external RAM (firmware 0.3.0-t16b and later) */
+  heap_largest?: number;
+  heap_min?: number;
+  psram_free?: number;
 }
 
 /** One page of the register map the hub sent: reads are [start, count, seconds], writes are [register, mask, low, high]. */

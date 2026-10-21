@@ -63,6 +63,7 @@ export async function connectFlow(services: Services, target: HeardUnit): Promis
     unit.state = await s.link.state();
     unit.level = Math.max(unit.level, unit.state.level ?? 0);
     unit.fw = unit.state.fw || unit.fw;
+    unit.claimed = unit.state.claimed ?? unit.claimed; // the plain Bluetooth record does not say; the unit itself does
   } catch {
     /* the unit says nothing to a connection without access */
   }

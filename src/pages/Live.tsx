@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LiveBlocks } from "@/ble/unit-link";
+import { Empty, Group, Page, Pill, Row } from "@/components/kit";
 import type { DecodedValue } from "@/lib/gateway-api";
 import { addBlock, toBlocks } from "@/lib/live-words";
+import { agoText, useUnitStatus } from "@/lib/use-status";
 import { useServices } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, Spinner } from "@/ui";
+import { Notice, Spinner } from "@/ui";
 
-const fmt = (v: number | string): string => (typeof v === "number" ? (Number.isInteger(v) ? String(v) : v.toFixed(2)) : v);
+const fmt = (v: number | string): string => (typeof v === "number" ? (Number.isInteger(v) ? v.toLocaleString() : v.toLocaleString(undefined, { maximumFractionDigits: 2 })) : v);
 
 /**
  * The unit's readings as they are read from the inverter, a few seconds apart. The unit sends raw registers over Bluetooth (it never converts);
@@ -15,15 +17,23 @@ const fmt = (v: number | string): string => (typeof v === "number" ? (Number.isI
 export function Live() {
   const services = useServices();
   const { unit, device } = useApp();
+  const { status } = useUnitStatus(unit?.link, 6000);
   const [values, setValues] = useState<Map<string, DecodedValue>>(new Map());
   const [error, setError] = useState<string | null>(null);
   const [rounds, setRounds] = useState(0);
+  const [lastAt, setLastAt] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [, force] = useState(0);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
   const words = useRef(new Map<number, string>());
   const round = useRef<{ id: number; blocks: [number, string][] } | null>(null);
   const busy = useRef(false);
+
+  useEffect(() => {
+    const t = setInterval(() => force((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     if (!unit || !device) return;
@@ -42,6 +52,7 @@ export function Live() {
             for (const v of out) next.set(v.key, v);
             return next;
           });
+          setLastAt(Date.now());
           setError(null);
         }
       } catch (e) {
@@ -81,52 +92,44 @@ export function Live() {
 
   if (!unit) return null;
   if (!device) return <Notice kind="warn">This unit is not linked to a device you can see, so its readings cannot be shown.</Notice>;
+  const silent = status && !status.inverter_online;
 
   return (
-    <>
-      <PageHead title="Live readings" sub="Read from the inverter by the unit, a few seconds apart, and shown here by the WayTara server." />
-      <div className="toolbar">
-        <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
-          {paused ? "Resume" : "Pause"}
-        </button>
-        <span className="sub">{rounds === 0 ? <Spinner label="Waiting for the first reading" /> : `${rounds} updates`}</span>
-      </div>
+    <Page
+      title="Live readings"
+      sub="What the unit reads from the inverter, a few seconds apart, decoded by the WayTara server."
+      actions={
+        <>
+          <span className="sub" style={{ fontSize: 13 }}>
+            {rounds > 0 ? `${rounds} updates · last ${agoText(lastAt)}` : ""}
+          </span>
+          <button className="btn small" onClick={() => setPaused((p) => !p)} aria-pressed={paused}>
+            {paused ? "Resume" : "Pause"}
+          </button>
+        </>
+      }
+    >
       {error ? <Notice kind="bad">{error}</Notice> : null}
-      {grouped.length > 0 ? (
-        <div className="table-wrap">
-          <table className="t">
-            <thead>
-              <tr>
-                <th>Value</th>
-                <th className="num">Reading</th>
-              </tr>
-            </thead>
-            <tbody>
-              {grouped.map(([g, list]) => (
-                <GroupRows key={g} name={g} list={list} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {silent ? (
+        <Notice kind="warn">The unit is not getting answers from the inverter right now (check the RS485 cable and that the inverter is on), so there is nothing to show yet.</Notice>
       ) : null}
-    </>
-  );
-}
-
-function GroupRows({ name, list }: { name: string; list: DecodedValue[] }) {
-  return (
-    <>
-      <tr className="grp">
-        <td colSpan={2}>{name}</td>
-      </tr>
-      {list.map((v) => (
-        <tr key={v.key}>
-          <td>{v.label}</td>
-          <td className="num">
-            {fmt(v.value)} {v.unit ?? ""} {v.in_range ? null : <span className="badge warn">out of range</span>}
-          </td>
-        </tr>
-      ))}
-    </>
+      {grouped.length === 0 ? (
+        silent ? null : (
+          <Empty title="Waiting for the first reading" text={<Spinner label="Listening to the unit" />} />
+        )
+      ) : (
+        grouped.map(([g, list]) => (
+          <Group key={g} title={g}>
+            {list.map((v) => (
+              <Row key={v.key} label={v.label}>
+                <strong style={{ color: "var(--fg)", fontVariantNumeric: "tabular-nums" }}>{fmt(v.value)}</strong>
+                {v.unit ? <span className="sub">{v.unit}</span> : null}
+                {v.in_range ? null : <Pill tone="warn">Out of range</Pill>}
+              </Row>
+            ))}
+          </Group>
+        ))
+      )}
+    </Page>
   );
 }

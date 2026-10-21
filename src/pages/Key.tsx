@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
+import { Group, Page, Pill, Row } from "@/components/kit";
 import type { RotationInfo } from "@/lib/gateway-api";
 import { useServices } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, Spinner } from "@/ui";
+import { Notice, Spinner } from "@/ui";
 
-const STATES: Record<string, string> = {
-  idle: "The unit's key is in use. No change is under way.",
-  sent: "A new key was sent to the unit. Waiting for the unit to confirm it.",
-  staged: "The unit has the new key and is switching to it.",
+const STATES: Record<string, { text: string; tone: "ok" | "warn" | "info" }> = {
+  idle: { text: "In use, no change under way", tone: "ok" },
+  sent: { text: "New key sent, waiting for the unit", tone: "warn" },
+  staged: { text: "The unit is switching to the new key", tone: "warn" },
 };
 
 /** Changing the key a unit uses to talk to WayTara, without cutting it off: the new key is sent sealed with the old one, the unit confirms, then the old one is cut. */
@@ -55,40 +56,44 @@ export function Key() {
   }
 
   if (!device) return null;
+  const st = info ? (STATES[info.state] ?? { text: info.state, tone: "info" as const }) : null;
   return (
-    <>
-      <PageHead title="Key" sub="Why: a key should be replaced when somebody who knew it has left, or when you suspect it was seen. Who: WayTara staff. What changes: only the unit's key; readings keep flowing." />
-      <section className="card">
-        {error ? <Notice kind="bad">{error}</Notice> : null}
-        {!info && !error ? (
-          <Spinner label="Reading the key status" />
-        ) : info ? (
-          <>
-            <p>{STATES[info.state] ?? `Status: ${info.state}`}</p>
-            {info.state !== "idle" && info.expires_at ? <p className="sub">If it does not finish by {new Date(info.expires_at).toLocaleTimeString()}, it is cancelled and the old key stays.</p> : null}
-            {info.state === "idle" && !info.can_start && info.reason ? <Notice kind="warn">{info.reason}</Notice> : null}
-            <div className="actions">
-              {confirming ? (
-                <>
-                  <button className="btn danger" onClick={start} disabled={busy}>
-                    {busy ? <Spinner label="Starting" /> : "Yes, change the key"}
+    <Page title="Key" sub="The secret the unit and WayTara share. Replace it when somebody who knew it has left, or when you suspect it was seen. Readings keep flowing during the change.">
+      {error ? <Notice kind="bad">{error}</Notice> : null}
+      {!info && !error ? (
+        <Spinner label="Reading the key status" />
+      ) : info && st ? (
+        <>
+          <Group title="Status" note="Nobody sees the new key: it is made on the server, sent to the unit sealed with the old key, and never shown. If the change does not finish in time it is cancelled and the old key stays.">
+            <Row label="Key">
+              <Pill tone={st.tone}>{st.text}</Pill>
+            </Row>
+            {info.state !== "idle" && info.started_at ? <Row label="Started" value={new Date(info.started_at).toLocaleTimeString()} /> : null}
+            {info.state !== "idle" && info.expires_at ? <Row label="Cancelled automatically at" value={new Date(info.expires_at).toLocaleTimeString()} /> : null}
+            {info.state === "idle" && !info.can_start && info.reason ? <Row label="Cannot be changed now" value={info.reason} /> : null}
+          </Group>
+          <Group title="Change the key" note="The unit must be online and on current firmware.">
+            <div className="pad">
+              <div className="actions" style={{ marginTop: 0 }}>
+                {confirming ? (
+                  <>
+                    <button className="btn danger" onClick={start} disabled={busy}>
+                      {busy ? <Spinner label="Starting" /> : "Yes, change the key"}
+                    </button>
+                    <button className="btn" onClick={() => setConfirming(false)}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn" onClick={() => setConfirming(true)} disabled={!info.can_start || busy}>
+                    Change the key
                   </button>
-                  <button className="btn" onClick={() => setConfirming(false)}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button className="btn" onClick={() => setConfirming(true)} disabled={!info.can_start || busy}>
-                  Change the key
-                </button>
-              )}
+                )}
+              </div>
             </div>
-            <p className="sub" style={{ marginTop: 12 }}>
-              The unit must be online and on current firmware. Nobody sees the new key: it never leaves the server and the unit.
-            </p>
-          </>
-        ) : null}
-      </section>
-    </>
+          </Group>
+        </>
+      ) : null}
+    </Page>
   );
 }

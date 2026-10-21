@@ -38,7 +38,7 @@ export function Claim({ unit, equipment, onDone }: { unit: ConnectedUnit; equipm
   const busy = phase !== "idle";
   return (
     <section className="card">
-      <h1>Finish setup</h1>
+      <h2>Finish setup</h2>
       <p className="sub">This links the unit to the device. After this, the unit restarts and starts sending data.</p>
       <dl className="kv">
         <dt>Device</dt>

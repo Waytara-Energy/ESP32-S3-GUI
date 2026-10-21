@@ -50,7 +50,7 @@ export function Checks({ unit, claimed, onNext }: { unit: ConnectedUnit; claimed
 
   return (
     <section className="card">
-      <h1>Check the connection</h1>
+      <h2>Check the connection</h2>
       <p className="sub">The unit tests its own way to WayTara: Wi-Fi, name lookup, clock, secure connection and the server. This takes about 20 seconds.</p>
 
       {running && !report ? <Spinner label="Running the checks" /> : null}

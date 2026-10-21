@@ -4,7 +4,8 @@ import { PickEquipment, type Equipment } from "@/steps/PickEquipment";
 import { Checks } from "@/steps/Checks";
 import { Claim } from "@/steps/Claim";
 import { useApp } from "@/state";
-import { Notice, PageHead, Stepper, type Stage } from "@/ui";
+import { Page } from "@/components/kit";
+import { Notice, Stepper, type Stage } from "@/ui";
 
 /** Setting up a unit: choose the device it belongs to, check its connection, then link it. Needs the administrator level or the unit's setup window. */
 export function Setup() {
@@ -21,8 +22,7 @@ export function Setup() {
   }
 
   return (
-    <>
-      <PageHead title="Setup" sub="Link this unit to the device it is wired to. Join its Wi-Fi first on the Network page." />
+    <Page title="Setup" sub="Link this unit to the device it is wired to. Join its Wi-Fi first on the Network page.">
       {stage !== "done" ? <Stepper stage={stage} /> : null}
 
       {!unit.state?.wifi && stage !== "done" ? (
@@ -68,6 +68,6 @@ export function Setup() {
           </div>
         </section>
       ) : null}
-    </>
+    </Page>
   );
 }

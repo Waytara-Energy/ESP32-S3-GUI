@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { JoinResult, Network as Net } from "@/ble/unit-link";
+import { Empty, Group, Page, Pill, Row } from "@/components/kit";
 import { signalLabel } from "@/lib/messages";
+import { useUnitStatus } from "@/lib/use-status";
 import { useServices } from "@/services";
 import { useApp } from "@/state";
-import { Notice, PageHead, SignalBars, Spinner } from "@/ui";
+import { Notice, SignalBars, Spinner } from "@/ui";
 
 /** One row per network name, the strongest first. */
 export function tidyNetworks(list: Net[]): Net[] {
@@ -20,6 +22,7 @@ export function tidyNetworks(list: Net[]): Net[] {
 export function Network() {
   const services = useServices();
   const { unit, device, refreshUnit } = useApp();
+  const { status: s } = useUnitStatus(unit?.link, 8000);
   const [nets, setNets] = useState<Net[] | null>(null);
   const [scanning, setScanning] = useState(false);
   const [ssid, setSsid] = useState("");
@@ -57,7 +60,9 @@ export function Network() {
   const open = selected?.o === true;
   const passwordProblem = !open && pass.length > 0 && pass.length < 8 ? "A Wi-Fi password has at least 8 characters." : null;
   const canJoin = canEdit && !joining && ssid.length >= 1 && ssid.length <= 32 && !passwordProblem && (open || pass.length >= 8);
-  const online = state?.wifi === true;
+  const online = s?.wifi ?? state?.wifi === true;
+  const nowSsid = s?.ssid ?? state?.ssid;
+  const nowRssi = s?.rssi ?? state?.rssi;
 
   async function join() {
     if (!link) return;
@@ -94,108 +99,108 @@ export function Network() {
   }
 
   return (
-    <>
-      <PageHead title="Network" sub="The unit needs a Wi-Fi network with internet. Use a 2.4 GHz network; the unit cannot join 5 GHz." />
-
-      <section className="card">
-        <h2>Now</h2>
+    <Page title="Network" sub="The unit needs a Wi-Fi network with internet. It can join 2.4 GHz networks only, not 5 GHz.">
+      <Group title="Connected now">
+        <Row label="Status">{online ? <Pill tone="ok">Connected</Pill> : <Pill tone="bad">Not connected</Pill>}</Row>
         {online ? (
-          <Notice kind="ok">
-            Connected to <strong>{state?.ssid}</strong>
-            {typeof state?.rssi === "number" ? <> · signal {signalLabel(state.rssi).label.toLowerCase()}</> : null}.
-          </Notice>
-        ) : (
-          <Notice kind="warn">The unit is not connected to Wi-Fi.</Notice>
-        )}
-        {state?.saved && state.saved.length > 0 ? (
           <>
-            <p className="group">Saved networks</p>
-            <ul className="list">
-              {state.saved.map((n) => (
-                <li key={n} className="item" style={{ cursor: "default" }}>
-                  <span>{n}</span>
-                  {canEdit ? (
-                    <button className="btn small link" onClick={() => void forget(n)} disabled={joining}>
-                      Forget
-                    </button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+            <Row label="Network" value={nowSsid} />
+            <Row label="Signal">{typeof nowRssi === "number" ? <><SignalBars rssi={nowRssi} /> <span>{signalLabel(nowRssi).label} ({nowRssi} dBm)</span></> : "–"}</Row>
+            {s ? <Row label="Channel and address" mono value={`channel ${s.channel} · ${s.ip}`} /> : null}
           </>
         ) : null}
-      </section>
+      </Group>
+
+      <Group title="Saved networks" note="The unit tries them in this order when it loses its connection. The one you join last goes first.">
+        {state?.saved && state.saved.length > 0 ? (
+          state.saved.map((n, i) => (
+            <Row key={n} label={n} hint={i === 0 ? "Tried first" : undefined}>
+              {n === nowSsid && online ? <Pill tone="ok">In use</Pill> : null}
+              {canEdit ? (
+                <button className="btn small link" onClick={() => void forget(n)} disabled={joining}>
+                  Forget
+                </button>
+              ) : null}
+            </Row>
+          ))
+        ) : (
+          <div className="pad sub">No networks saved.</div>
+        )}
+      </Group>
 
       {!canEdit ? (
         <Notice kind="warn">Your access lets you look at the unit but not change its Wi-Fi.</Notice>
       ) : (
-        <section className="card">
-          <h2>Join a network</h2>
-          <div className="actions" style={{ marginTop: 0 }}>
-            <button className="btn" onClick={() => void scan()} disabled={scanning || joining}>
-              {scanning ? <Spinner label="Scanning" /> : "Scan for networks"}
+        <Group
+          title="Join a network"
+          aside={
+            <button className="btn small" onClick={() => void scan()} disabled={scanning || joining}>
+              {scanning ? <Spinner label="Scanning" /> : "Scan again"}
             </button>
-          </div>
-
+          }
+        >
           {nets && nets.length > 0 ? (
-            <ul className="list" aria-label="Networks found">
-              {nets.slice(0, 12).map((n) => (
-                <li key={n.s}>
-                  <button className={`item${n.s === ssid ? " selected" : ""}`} aria-pressed={n.s === ssid} onClick={() => setSsid(n.s)}>
-                    <span>
-                      {n.s} {n.o ? <span className="badge warn">open</span> : null}
-                    </span>
-                    <SignalBars rssi={n.r} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : nets && !scanning ? (
-            <p className="sub" style={{ marginTop: 12 }}>
-              No networks found. Move closer to the router and scan again, or type the name below.
-            </p>
-          ) : null}
-
-          <label className="field" style={{ marginTop: 16 }}>
-            <span>Network name</span>
-            <input className="input" value={ssid} maxLength={32} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setSsid(e.target.value)} />
-          </label>
-          {open ? (
-            <p className="sub">This network is open (no password).</p>
-          ) : (
-            <label className="field">
-              <span>Password</span>
-              <div className="pw">
-                <input className="input" type={showPass ? "text" : "password"} value={pass} maxLength={63} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setPass(e.target.value)} />
-                <button type="button" className="btn" onClick={() => setShowPass((s) => !s)} aria-pressed={showPass}>
-                  {showPass ? "Hide" : "Show"}
-                </button>
-              </div>
-            </label>
-          )}
-          {passwordProblem ? <Notice kind="warn">{passwordProblem}</Notice> : null}
-          {error ? <Notice kind="bad">{error}</Notice> : null}
-          {result?.connected ? (
-            <Notice kind="ok">
-              Joined {result.ssid} in {((result.ms ?? 0) / 1000).toFixed(1)} s{typeof result.rssi === "number" ? `, signal ${signalLabel(result.rssi).label.toLowerCase()}` : ""}.
-            </Notice>
-          ) : result ? (
-            <Notice kind="bad">The network was saved but the unit could not join it{result.reason ? `: ${result.reason}` : ""}. Check the password and that the network has internet.</Notice>
-          ) : null}
-          <div className="actions">
-            <button className="btn primary" onClick={join} disabled={!canJoin}>
-              {joining ? <Spinner label="Joining (up to 30 s)" /> : "Save and join"}
-            </button>
-            <span className="grow" />
-            {state?.saved && state.saved.length > 1 ? (
-              <button className="btn link" onClick={() => void forget()} disabled={joining}>
-                Forget all saved networks
+            nets.slice(0, 12).map((n) => (
+              <button key={n.s} className={`item${n.s === ssid ? " selected" : ""}`} style={{ borderRadius: 0, border: 0, borderTop: "1px solid var(--hair)", minHeight: 50 }} aria-pressed={n.s === ssid} onClick={() => setSsid(n.s)}>
+                <span>
+                  {n.s} {n.o ? <Pill tone="warn">Open</Pill> : null}
+                </span>
+                <span className="meta" style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  ch {n.ch} · {n.r} dBm <SignalBars rssi={n.r} />
+                </span>
               </button>
+            ))
+          ) : nets && !scanning ? (
+            <div className="pad">
+              <Empty title="No networks found" text="Move closer to the router and scan again, or type the name below." />
+            </div>
+          ) : (
+            <div className="pad">
+              <Spinner label="Looking for networks" />
+            </div>
+          )}
+          <div className="pad" style={{ borderTop: "1px solid var(--hair)" }}>
+            <label className="field">
+              <span>Network name</span>
+              <input className="input" value={ssid} maxLength={32} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setSsid(e.target.value)} />
+            </label>
+            {open ? (
+              <p className="sub">This network is open (no password).</p>
+            ) : (
+              <label className="field">
+                <span>Password</span>
+                <div className="pw">
+                  <input className="input" type={showPass ? "text" : "password"} value={pass} maxLength={63} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(e) => setPass(e.target.value)} />
+                  <button type="button" className="btn" onClick={() => setShowPass((v) => !v)} aria-pressed={showPass}>
+                    {showPass ? "Hide" : "Show"}
+                  </button>
+                </div>
+              </label>
+            )}
+            {passwordProblem ? <Notice kind="warn">{passwordProblem}</Notice> : null}
+            {error ? <Notice kind="bad">{error}</Notice> : null}
+            {result?.connected ? (
+              <Notice kind="ok">
+                Joined {result.ssid} in {((result.ms ?? 0) / 1000).toFixed(1)} s{typeof result.rssi === "number" ? `, signal ${signalLabel(result.rssi).label.toLowerCase()}` : ""}.
+              </Notice>
+            ) : result ? (
+              <Notice kind="bad">The network was saved but the unit could not join it{result.reason ? `: ${result.reason}` : ""}. Check the password and that the network has internet.</Notice>
             ) : null}
+            <div className="actions">
+              <button className="btn primary" onClick={join} disabled={!canJoin}>
+                {joining ? <Spinner label="Joining (up to 30 s)" /> : "Save and join"}
+              </button>
+              <span className="grow" />
+              {state?.saved && state.saved.length > 1 ? (
+                <button className="btn link" onClick={() => void forget()} disabled={joining}>
+                  Forget all saved networks
+                </button>
+              ) : null}
+            </div>
           </div>
-        </section>
+        </Group>
       )}
       {error && !canEdit ? <Notice kind="bad">{error}</Notice> : null}
-    </>
+    </Page>
   );
 }

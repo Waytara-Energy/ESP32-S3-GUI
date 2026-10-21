@@ -1,12 +1,16 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Pill } from "@/components/kit";
 import { NAV, canOpen, groups, levelName, roleName } from "@/lib/roles";
 import { applyTheme, readTheme, saveTheme, type ThemeChoice } from "@/lib/theme";
 import { useApp } from "@/state";
 import { Icon, Wordmark } from "@/ui";
 
-/** The page frame, like the dashboard's: a sidebar of grouped pages (a drawer on a phone), the content, and a footer with the unit's firmware. */
+/**
+ * The console frame: a menu of grouped pages (a drawer on a phone), a header that always says which device you are looking at and how you are
+ * connected, the page, and a footer that always shows the unit's firmware version. The page scrolls; the header and the footer stay.
+ */
 export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut: () => void }) {
-  const { page, go, unit, device, role, email } = useApp();
+  const { page, go, unit, device, role, email, offline, disconnect, closeOffline } = useApp();
   const [open, setOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeChoice>(readTheme);
 
@@ -19,7 +23,7 @@ export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut:
     return () => mq.removeEventListener("change", on);
   }, [theme]);
 
-  // the drawer closes when a page is chosen, and with the Escape key
+  // the drawer closes with the Escape key
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
@@ -94,16 +98,23 @@ export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut:
             </button>
             <div className="grow">
               {device ? (
-                <span className="chip" title={`${device.label} · ${device.site}`}>
-                  <span>
-                    <strong>{device.label}</strong> · {device.site}
-                  </span>
-                  {unit ? <span className="badge ok">Connected</span> : <span className="badge">Not connected</span>}
+                <span className="devchip" title={`${device.label} · ${device.site}`}>
+                  <strong>{device.label}</strong>
+                  <span className="site">{device.site}</span>
                 </span>
               ) : (
-                <span className="sub">{unit ? `Connected to ${unit.name}` : "No unit connected"}</span>
+                <span className="devchip">
+                  <strong>{unit ? unit.name : "No unit"}</strong>
+                </span>
               )}
+              {unit ? <Pill tone="ok">Bluetooth connected</Pill> : offline ? <Pill>Without Bluetooth</Pill> : null}
+              {unit ? <Pill tone="info">{levelName(unit.level)}</Pill> : null}
             </div>
+            {unit || offline ? (
+              <button className="btn small" onClick={() => (unit ? disconnect() : closeOffline())}>
+                {unit ? "Disconnect" : "Back to the radar"}
+              </button>
+            ) : null}
             <button className="btn small" onClick={toggleTheme} aria-label={dark ? "Switch to the light theme" : "Switch to the dark theme"} title={dark ? "Light theme" : "Dark theme"}>
               <Icon name={dark ? "sun" : "moon"} />
             </button>
@@ -114,7 +125,11 @@ export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut:
         </div>
       </div>
       <footer className="footer">
-        <span>Unit firmware: {fw ?? "not connected"}</span>
+        <span className="fw">
+          <i className={`dot${unit ? " on" : ""}`} aria-hidden />
+          Unit firmware: <b>{fw ?? "not connected"}</b>
+          {unit ? <span>· encrypted Bluetooth link</span> : null}
+        </span>
         <span>© {new Date().getFullYear()} WayTara Energy</span>
       </footer>
     </div>

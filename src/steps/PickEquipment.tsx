@@ -32,7 +32,7 @@ export function PickEquipment({ selected, onPick }: { selected: Equipment | null
 
   return (
     <section className="card">
-      <h1>Which device is this unit for?</h1>
+      <h2>Which device is this unit for?</h2>
       <p className="sub">Choose the inverter the monitoring unit is wired to. The unit will report as this device.</p>
       {error ? (
         <>
