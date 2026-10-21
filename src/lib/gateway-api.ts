@@ -75,7 +75,7 @@ export function createGatewayClient(o: GatewayClientOptions) {
         cache: "no-store",
       });
     } catch {
-      throw new GatewayApiError(0, "Could not reach the service. Check your connection and try again.");
+      throw new GatewayApiError(0, "Could not reach the WayTara service from this page. Check your connection. A page opened from your own computer (localhost) is blocked by the service: use https://setup.waytaraenergy.com.");
     }
     if (!res.ok) {
       // the hub explains a refused request (a key change in progress, a wrong value) in plain words; use them when it does
