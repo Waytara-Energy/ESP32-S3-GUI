@@ -1,5 +1,5 @@
-// Talks to the WayTara backend (the hub), signed in as the person using the page. Runs in the browser. The only thing this page asks the
-// hub for is a single-use claim ticket; the hub decides whether this person may set up that device, and this code only reports its answer.
+// Talks to the WayTara backend (the hub), signed in as the person using the page. Runs in the browser. The hub decides what this person may
+// do; this code only carries the question and reports the answer in plain words.
 
 export class GatewayApiError extends Error {
   readonly status: number;
@@ -29,32 +29,96 @@ const plainMessage = (status: number): string =>
             ? "The service is unavailable right now. Try again in a moment."
             : "The request was not accepted.";
 
+export interface BleGrant {
+  grant: string;
+  /** 1 view, 2 network, 3 service, 4 admin */
+  level: number;
+  level_name: "network" | "service" | "admin";
+  expires_in: number;
+}
+export interface DecodedValue {
+  key: string;
+  label: string;
+  unit: string | null;
+  group: string | null;
+  value: number | string;
+  in_range: boolean;
+}
+export interface IntervalInfo {
+  seconds: number;
+  allowed: number[];
+  default?: number;
+  previous?: number;
+}
+export interface RotationInfo {
+  state: string;
+  rotation_id: string | null;
+  started_at: string | null;
+  expires_at: string | null;
+  can_start: boolean;
+  reason: string | null;
+}
+
 export function createGatewayClient(o: GatewayClientOptions) {
   const base = o.baseUrl.replace(/\/+$/, "");
   const doFetch = o.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
 
-  async function post<T>(path: string, body: unknown): Promise<T> {
+  async function call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
     const token = await o.getToken();
     if (!token) throw new GatewayApiError(401, plainMessage(401));
     let res: Response;
     try {
       res = await doFetch(`${base}${path}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        method,
+        headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) },
+        ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
         cache: "no-store",
       });
     } catch {
       throw new GatewayApiError(0, "Could not reach the service. Check your connection and try again.");
     }
-    if (!res.ok) throw new GatewayApiError(res.status, plainMessage(res.status));
+    if (!res.ok) {
+      // the hub explains a refused request (a key change in progress, a wrong value) in plain words; use them when it does
+      let said: string | null = null;
+      if (res.status === 409 || res.status === 400) {
+        try {
+          const j = (await res.json()) as { error?: { message?: string } };
+          if (typeof j.error?.message === "string" && j.error.message.length < 300) said = j.error.message;
+        } catch {
+          /* no body */
+        }
+      }
+      throw new GatewayApiError(res.status, said ?? plainMessage(res.status));
+    }
     return (await res.json()) as T;
   }
+
+  const eq = (id: string) => `/v1/equipment/${encodeURIComponent(id)}`;
 
   return {
     /** A single-use ticket (valid 15 minutes) that lets one board, named by its hardware id, collect the key of this equipment. */
     issueClaimTicket(equipmentId: string, hardwareId: string): Promise<{ ticket: string; expires_at: string }> {
-      return post(`/v1/equipment/${encodeURIComponent(equipmentId)}/claim-tickets`, { hardware_id: hardwareId });
+      return call("POST", `${eq(equipmentId)}/claim-tickets`, { hardware_id: hardwareId });
+    },
+    /** A pass (two minutes) for this person to talk to this unit over Bluetooth, valid only on the connection whose public key is given. */
+    bleGrant(equipmentId: string, unitPublicKey: string): Promise<BleGrant> {
+      return call("POST", `${eq(equipmentId)}/ble-grant`, { pub: unitPublicKey });
+    },
+    /** Raw register blocks ([start, hex]) as values: the hub does all decoding. */
+    async decode(equipmentId: string, blocks: [number, string][]): Promise<DecodedValue[]> {
+      return (await call<{ values: DecodedValue[] }>("POST", `${eq(equipmentId)}/decode`, { blocks })).values;
+    },
+    getInterval(equipmentId: string): Promise<IntervalInfo> {
+      return call("GET", `${eq(equipmentId)}/push-interval`);
+    },
+    setInterval(equipmentId: string, seconds: number): Promise<IntervalInfo> {
+      return call("PUT", `${eq(equipmentId)}/push-interval`, { seconds });
+    },
+    rotationStatus(equipmentId: string): Promise<RotationInfo> {
+      return call("GET", `${eq(equipmentId)}/rotation`);
+    },
+    startRotation(equipmentId: string): Promise<RotationInfo> {
+      return call("POST", `${eq(equipmentId)}/rotation`, {});
     },
   };
 }

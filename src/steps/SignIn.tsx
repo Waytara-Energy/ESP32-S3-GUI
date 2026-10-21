@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase";
-import { Notice, Spinner } from "@/ui";
+import { Notice, Spinner, Wordmark } from "@/ui";
 
 export function SignIn() {
   const [email, setEmail] = useState("");
@@ -19,23 +19,29 @@ export function SignIn() {
   }
 
   return (
-    <form className="card" onSubmit={submit}>
-      <h1>Set up a unit</h1>
-      <p className="sub">Sign in with your WayTara account. You can set up units for sites you own or are assigned to.</p>
-      <label className="field">
-        <span>Email</span>
-        <input className="input" type="email" autoComplete="username" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
-      </label>
-      <label className="field">
-        <span>Password</span>
-        <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-      </label>
-      {error ? <Notice kind="bad">{error}</Notice> : null}
-      <div className="actions">
-        <button className="btn primary grow" type="submit" disabled={busy || !email || !password}>
-          {busy ? <Spinner label="Signing in" /> : "Sign in"}
-        </button>
-      </div>
-    </form>
+    <div className="signin">
+      <Wordmark />
+      <form className="card" onSubmit={submit}>
+        <h1>Unit setup</h1>
+        <p className="sub">Sign in with your WayTara account. What you can do with a unit depends on your account: customers see their own unit and its Wi-Fi, WayTara staff work on the sites they are assigned to.</p>
+        <label className="field">
+          <span>Email</span>
+          <input className="input" type="email" autoComplete="username" inputMode="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        </label>
+        <label className="field">
+          <span>Password</span>
+          <input className="input" type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+        </label>
+        {error ? <Notice kind="bad">{error}</Notice> : null}
+        <div className="actions">
+          <button className="btn primary grow" type="submit" disabled={busy || !email || !password}>
+            {busy ? <Spinner label="Signing in" /> : "Sign in"}
+          </button>
+        </div>
+      </form>
+      <p className="sub" style={{ marginTop: 14, textAlign: "center", fontSize: 12.5 }}>
+        © {new Date().getFullYear()} WayTara Energy
+      </p>
+    </div>
   );
 }

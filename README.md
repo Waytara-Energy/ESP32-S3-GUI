@@ -1,8 +1,6 @@
 # ESP32-S3 GUI: the WayTara unit setup page
 
-The page an installer opens on a phone or laptop to set up a monitoring unit (the WayTara gateway board): sign in, choose the device the unit is
-wired to, connect over Bluetooth, join Wi-Fi, run the connection checks and the speed test, and finish (the unit collects its key from the
-WayTara server).
+The page that customers, installers and WayTara staff open on a phone or laptop to find a monitoring unit (the WayTara gateway board) and work with it over Bluetooth, according to who they are: look at its status and live readings, change its Wi-Fi, and, for staff, read its logs and register map, set it up, change its push interval and its key.
 
 This repository is the web page only. The other parts live in their own repositories:
 
@@ -12,8 +10,7 @@ This repository is the web page only. The other parts live in their own reposito
 | Backend (the hub, `https://hub.waytaraenergy.com`) | `Waytara-Energy/waytara-backend` |
 | Dashboard, admin app, database migrations | the main WayTara repository |
 
-Vite + React + TypeScript, no UI library. It talks to two things: Supabase (sign-in, and the list of devices the person may see) and the WayTara
-backend (a single-use claim ticket). The unit itself is reached over Web Bluetooth with the encrypted protocol of the firmware
+Vite + React + TypeScript, no UI library. It talks to two things: Supabase (sign-in, the devices the person may see, the activity log) and the WayTara backend (a Bluetooth grant, a claim ticket, decoding of live readings, the push interval and key change). The unit itself is reached over Web Bluetooth with the encrypted protocol of the firmware
 (`waytara-gateway-fw/ble_setup.cpp`); the protocol code is in `src/ble` and is tested against a fake unit.
 
 ## Run it
@@ -43,15 +40,29 @@ iPhone or iPad; the page says so. The address must be `https` (or `localhost`).
 `vercel.json` sets the security headers: a strict Content-Security-Policy that allows only this site, the Supabase project and the hub, and Bluetooth
 for this page only. If the hub or the Supabase project ever moves, change `connect-src` there.
 
-## What each step does
+## How a person gets into a unit
 
-| Step | Unit command | Notes |
+1. **Scan for units** (or **Connect** on a remembered unit): the browser lists the WayTara units in range; the page connects and agrees an encrypted link with the unit.
+2. The page asks the database which device the unit belongs to (`my_unit_by_hardware`; a unit that is unknown and one at somebody else's site look the same).
+3. It asks the WayTara server for a **grant** for this person and this very connection (`POST /v1/equipment/:id/ble-grant`, two minutes, bound to the unit's key for this connection) and presents it to the unit (`auth`). The unit checks it by itself with its own key and says which **level** it gives: 1 view, 2 view and Wi-Fi (customer), 3 service (assigned employee or installer), 4 administrator. A unit whose setup window is open (BOOT held 3 seconds) gives level 4 to anyone next to it; that is how a new unit is set up.
+4. The menu opens the pages that level allows; the others show a lock and say why. The unit enforces the level itself, the page only follows it.
+
+| Page | Needs | What it does |
 |---|---|---|
-| Device | – | Lists inverters the person can see (the database's access rules decide). |
-| Unit | read the info characteristic, key exchange | The unit advertises only while its setup window is open (new unit, or BOOT held 3 s). |
-| Wi-Fi | `info`, `scan`, `wifi`, `forget` | 2.4 GHz only. The password goes to the unit over the encrypted link and is never kept by the page. |
-| Checks | `checks`, `speed` | Wi-Fi, name lookup, clock, secure connection, server, live link. |
-| Finish | `claim` (+ `POST /v1/equipment/{id}/claim-tickets`) | The unit then restarts. |
+| Units | – | Scan, remembered units (names and ids only, in this browser), open a device without Bluetooth |
+| Overview | view | Unit and connection summary; restart (service) |
+| Status | view | The unit's own status, refreshed every 5 s |
+| Network | view; Wi-Fi to change | Saved networks, scan, join, forget (logged, never with the password) |
+| Live readings | view | Raw registers from the unit, decoded by the WayTara server (a customer sees only what the customer view shows) |
+| Register map | service | What the unit reads and may change |
+| Setup | administrator or setup window | Choose the device, check the connection, link the unit |
+| Push interval | staff | How often the averaged figures are written (hub API, logged) |
+| Key | staff | Change the unit's key without cutting it off (hub API) |
+| Live logs | service | The unit's own log as it happens |
+| Activity log | signed in | Who did what to the device (database, same access rules as the dashboard) |
 
-Known limits: the unit restarts after setup, so the Bluetooth link ends on purpose; a unit that is already set up for another device is replaced
-after a warning; iPhones are not supported (Apple does not offer Web Bluetooth).
+The look follows the dashboard (Poppins, the same colours, light and dark, the logo in `public/`), a sidebar on a laptop and a drawer on a phone, and a footer with the unit's firmware version and the copyright line.
+
+`/?demo&role=customer|employee|admin` on the dev server shows every page against a fake unit at that role's level.
+
+Known limits: the unit lets go of a quiet phone after 5 minutes (the page pings every minute while it is open); a unit that is already set up for another device is replaced after a warning; iPhones are not supported (Apple does not offer Web Bluetooth).

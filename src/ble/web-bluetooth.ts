@@ -23,7 +23,7 @@ interface BluetoothDeviceLike extends EventTarget {
   gatt?: GattServer;
 }
 interface BluetoothLike {
-  requestDevice(options: { filters: { services: string[] }[] }): Promise<BluetoothDeviceLike>;
+  requestDevice(options: { filters: ({ services: string[] } | { name: string })[]; optionalServices?: string[] }): Promise<BluetoothDeviceLike>;
 }
 
 const bluetooth = (): BluetoothLike | undefined => (navigator as unknown as { bluetooth?: BluetoothLike }).bluetooth;
@@ -40,12 +40,13 @@ export class BluetoothCancelled extends Error {
 }
 
 /** Asks the person to choose a unit that is advertising the WayTara setup service, and connects to it. */
-export async function connectToUnit(): Promise<{ transport: Transport; name: string }> {
+export async function connectToUnit(preferName?: string): Promise<{ transport: Transport; name: string }> {
   const bt = bluetooth();
   if (!bt) throw new Error("This browser cannot use Bluetooth.");
   let device: BluetoothDeviceLike;
   try {
-    device = await bt.requestDevice({ filters: [{ services: [SERVICE_UUID] }] });
+    // a remembered unit is asked for by name, so the browser's list shows only that one; otherwise every WayTara unit in range is listed
+    device = await bt.requestDevice(preferName ? { filters: [{ name: preferName }], optionalServices: [SERVICE_UUID] } : { filters: [{ services: [SERVICE_UUID] }] });
   } catch (e) {
     if (e instanceof DOMException && e.name === "NotFoundError") throw new BluetoothCancelled();
     throw e;

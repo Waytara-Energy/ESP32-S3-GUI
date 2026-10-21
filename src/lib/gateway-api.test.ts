@@ -34,3 +34,39 @@ describe("gateway client", () => {
     await expect(down.issueClaimTicket("e", "h")).rejects.toMatchObject({ status: 0 });
   });
 });
+
+describe("gateway client: the setup page's other calls", () => {
+  it("asks for a Bluetooth grant with the unit's public key", async () => {
+    const { calls, client } = fake(200, { grant: "g", level: 3, level_name: "service", expires_in: 120 });
+    expect(await client.bleGrant("e1", "KEY")).toMatchObject({ grant: "g", level: 3 });
+    expect(calls[0]!.url).toBe("https://hub.example/v1/equipment/e1/ble-grant");
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ pub: "KEY" });
+  });
+
+  it("sends raw blocks to be decoded and returns the values", async () => {
+    const { calls, client } = fake(200, { values: [{ key: "pv1_power_w", label: "PV1 power", unit: "W", group: "Solar", value: 100, in_range: true }] });
+    expect((await client.decode("e1", [[186, "0064"]]))[0]).toMatchObject({ key: "pv1_power_w", value: 100 });
+    expect(JSON.parse(calls[0]!.init.body as string)).toEqual({ blocks: [[186, "0064"]] });
+  });
+
+  it("reads and changes the push interval, and reads and starts a key change", async () => {
+    const a = fake(200, { seconds: 900, allowed: [60, 900] });
+    expect((await a.client.getInterval("e1")).seconds).toBe(900);
+    expect(a.calls[0]!.init.method).toBe("GET");
+    expect(a.calls[0]!.init.body).toBeUndefined();
+    const b = fake(200, { seconds: 300, allowed: [300], previous: 900 });
+    await b.client.setInterval("e1", 300);
+    expect(b.calls[0]!.init.method).toBe("PUT");
+    expect(JSON.parse(b.calls[0]!.init.body as string)).toEqual({ seconds: 300 });
+    const c = fake(200, { state: "idle", rotation_id: null, started_at: null, expires_at: null, can_start: true, reason: null });
+    expect((await c.client.rotationStatus("e1")).can_start).toBe(true);
+    await c.client.startRotation("e1");
+    expect(c.calls[1]!.url).toBe("https://hub.example/v1/equipment/e1/rotation");
+  });
+
+  it("repeats the hub's own plain words for a refused request", async () => {
+    const { client } = fake(409, { error: { code: "key_change_in_progress", message: "The unit is changing its key right now. Try again in a few minutes." } });
+    await expect(client.bleGrant("e1", "K")).rejects.toThrow(/changing its key right now/);
+    await expect(fake(404, { error: { message: "secret detail" } }).client.bleGrant("e1", "K")).rejects.toThrow(/can't set up this device/);
+  });
+});

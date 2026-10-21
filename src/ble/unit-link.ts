@@ -73,11 +73,68 @@ export interface UnitState {
   claimed: boolean;
   equipment_id?: string;
   hub?: string;
+  hub_link?: boolean;
   clock?: boolean;
   wifi?: boolean;
   ssid?: string;
   rssi?: number;
   saved?: string[];
+  /** what this connection may do: 0 nothing yet, 1 view, 2 network, 3 service, 4 admin (the open setup window counts as 4) */
+  level?: number;
+  setup_open?: boolean;
+  heap_free?: number;
+}
+
+/** The unit's own view of itself, for the Status page. */
+export interface UnitStatus {
+  boot: number;
+  uptime_s: number;
+  wifi: boolean;
+  ssid?: string;
+  rssi?: number;
+  channel?: number;
+  ip?: string;
+  clock: boolean;
+  hub: string;
+  hub_link: boolean;
+  inverter_online: boolean;
+  last_ok_age_s: number;
+  ok_pct_5min: number;
+  rounds: number;
+  requests_failed: number;
+  dead_registers: number;
+  simulated: boolean;
+  queue_frames: number;
+  queue_bytes: number;
+  dropped: number;
+  seq_sent: number;
+  seq_acked: number;
+  map_ver: number;
+  map_requests: number;
+  map_writes: number;
+  heap_free: number;
+}
+
+/** One page of the register map the hub sent: reads are [start, count, seconds], writes are [register, mask, low, high]. */
+export interface MapPage {
+  ver: number;
+  kind: "r" | "w";
+  total: number;
+  from: number;
+  items: number[][];
+  next?: number;
+}
+
+export interface LogLine {
+  n: number;
+  text: string;
+}
+/** One piece of a round of readings: raw registers as hex (4 digits each). `more` is true when the round continues in the next piece. */
+export interface LiveBlocks {
+  round: number;
+  t: number;
+  blocks: [number, string][];
+  more: boolean;
 }
 export interface ClaimResult {
   equipment_id: string;
@@ -98,6 +155,11 @@ export class UnitLink {
   private closed = false;
   info: UnitInfo | null = null;
   onClosed: (() => void) | null = null;
+  /** lines of the unit's log, while `logs(true)` is on */
+  onLog: ((lines: LogLine[]) => void) | null = null;
+  /** pieces of the live readings, while `live(true)` is on */
+  onLive: ((piece: LiveBlocks) => void) | null = null;
+  private keepAlive: ReturnType<typeof setInterval> | null = null;
 
   constructor(private readonly t: Transport) {
     t.onFrame((f) => void this.handleFrame(f));
@@ -127,6 +189,8 @@ export class UnitLink {
     await this.t.write(concat(new Uint8Array([FLAG_HELLO]), keys.hello));
     await ready;
     this.info = info;
+    // the unit lets go of a phone that is quiet for 5 minutes: a ping every minute says the page is still here
+    this.keepAlive = setInterval(() => void this.request("ping", {}, 10_000).catch(() => undefined), 60_000);
     return info;
   }
 
@@ -157,6 +221,14 @@ export class UnitLink {
       const r = this.ready;
       this.ready = null;
       r.resolve();
+      return;
+    }
+    if (Array.isArray(msg.log)) {
+      this.onLog?.((msg.log as [number, string][]).map(([n, text]) => ({ n, text })));
+      return;
+    }
+    if (typeof msg.live === "number") {
+      this.onLive?.({ round: msg.live, t: Number(msg.t ?? 0), blocks: (msg.b as [number, string][]) ?? [], more: msg.more === true });
       return;
     }
     const n = typeof msg.n === "number" ? msg.n : -1;
@@ -210,6 +282,49 @@ export class UnitLink {
   async state(): Promise<UnitState> {
     return this.ask<UnitState>("info");
   }
+  /** Presents the grant the WayTara server signed for this person and this connection. Resolves with the access level it gives. */
+  async auth(grant: string): Promise<number> {
+    const r = await this.ask<{ level: number }>("auth", { grant }, 15_000);
+    return Number(r.level);
+  }
+  ping(): Promise<unknown> {
+    return this.ask("ping", {}, 10_000);
+  }
+  status(): Promise<UnitStatus> {
+    return this.ask<UnitStatus>("status");
+  }
+  async logs(on: boolean, backlog = 40): Promise<void> {
+    await this.ask("logs", { on, backlog });
+  }
+  async live(on: boolean): Promise<void> {
+    await this.ask("live", { on });
+  }
+  map(kind: "r" | "w", from = 0): Promise<MapPage> {
+    return this.ask<MapPage>("map", { kind, from });
+  }
+  /** Every page of the map, in order. */
+  async fullMap(kind: "r" | "w"): Promise<{ ver: number; total: number; items: number[][] }> {
+    const items: number[][] = [];
+    let from = 0;
+    let ver = 0;
+    let total = 0;
+    for (let guard = 0; guard < 20; guard++) {
+      const p = await this.map(kind, from);
+      ver = p.ver;
+      total = p.total;
+      items.push(...p.items);
+      if (p.next === undefined) break;
+      from = p.next;
+    }
+    return { ver, total, items };
+  }
+  async reboot(): Promise<void> {
+    try {
+      await this.ask("reboot", {}, 8000);
+    } catch {
+      /* the unit restarts as it answers */
+    }
+  }
   async scan(): Promise<Network[]> {
     return (await this.ask<{ networks: Network[] }>("scan")).networks ?? [];
   }
@@ -238,6 +353,8 @@ export class UnitLink {
   }
 
   disconnect(): void {
+    if (this.keepAlive) clearInterval(this.keepAlive);
+    this.keepAlive = null;
     this.fail(new UnitError("Disconnected.", "link"), false);
     this.t.disconnect();
   }
@@ -245,6 +362,8 @@ export class UnitLink {
   private fail(error: Error, notify = true): void {
     if (this.closed) return;
     this.closed = true;
+    if (this.keepAlive) clearInterval(this.keepAlive);
+    this.keepAlive = null;
     this.ready?.reject(error);
     this.ready = null;
     for (const p of this.pending.values()) {

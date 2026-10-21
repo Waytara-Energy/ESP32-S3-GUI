@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CheckReport, SpeedResult } from "@/ble/unit-link";
-import type { UnitSession } from "./Connect";
+import type { ConnectedUnit } from "@/lib/connect-flow";
 import { checkTitle, checksVerdict, kbit, signalLabel, speedVerdict, stepState } from "@/lib/messages";
 import { Notice, Spinner } from "@/ui";
 
 const MARK = { ok: "✓", failed: "✕", skipped: "–" } as const;
 
-export function Checks({ session, claimed, onNext }: { session: UnitSession; claimed: boolean; onNext: () => void }) {
-  const { link } = session;
+export function Checks({ unit, claimed, onNext }: { unit: ConnectedUnit; claimed: boolean; onNext: () => void }) {
+  const { link } = unit;
   const [report, setReport] = useState<CheckReport | null>(null);
   const [running, setRunning] = useState(false);
   const [speed, setSpeed] = useState<SpeedResult | null>(null);
