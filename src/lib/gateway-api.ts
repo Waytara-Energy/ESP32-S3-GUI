@@ -50,6 +50,29 @@ export interface IntervalInfo {
   default?: number;
   previous?: number;
 }
+export interface ReadRate {
+  key: string;
+  label: string;
+  unit: string | null;
+  category: string;
+  /** the registers of the inverter this value is read from */
+  registers: number[];
+  /** the rate in force, in seconds */
+  seconds: number;
+  /** the rate the register map was made with */
+  map_s: number;
+  custom: boolean;
+}
+export interface ReadRates {
+  allowed: number[];
+  default: number;
+  metrics: ReadRate[];
+}
+/** seconds = null puts back the register map's own rate */
+export interface ReadRateChange {
+  key: string;
+  seconds: number | null;
+}
 export interface RotationInfo {
   state: string;
   rotation_id: string | null;
@@ -113,6 +136,12 @@ export function createGatewayClient(o: GatewayClientOptions) {
     },
     setInterval(equipmentId: string, seconds: number): Promise<IntervalInfo> {
       return call("PUT", `${eq(equipmentId)}/push-interval`, { seconds });
+    },
+    getReadRates(equipmentId: string): Promise<ReadRates> {
+      return call("GET", `${eq(equipmentId)}/read-rates`);
+    },
+    setReadRates(equipmentId: string, changes: ReadRateChange[]): Promise<{ changed: number }> {
+      return call("PUT", `${eq(equipmentId)}/read-rates`, { changes });
     },
     rotationStatus(equipmentId: string): Promise<RotationInfo> {
       return call("GET", `${eq(equipmentId)}/rotation`);

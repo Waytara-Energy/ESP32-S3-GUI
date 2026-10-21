@@ -64,6 +64,17 @@ describe("gateway client: the setup page's other calls", () => {
     expect(c.calls[1]!.url).toBe("https://hub.example/v1/equipment/e1/rotation");
   });
 
+  it("reads the read rates and sends changes (null puts back the map's rate)", async () => {
+    const a = fake(200, { allowed: [10, 30], default: 30, metrics: [] });
+    expect((await a.client.getReadRates("e1")).default).toBe(30);
+    expect(a.calls[0]!.url).toBe("https://hub.example/v1/equipment/e1/read-rates");
+    expect(a.calls[0]!.init.method).toBe("GET");
+    const b = fake(200, { changed: 2 });
+    expect((await b.client.setReadRates("e1", [{ key: "pv1_power_w", seconds: 10 }, { key: "battery_temp_c", seconds: null }])).changed).toBe(2);
+    expect(b.calls[0]!.init.method).toBe("PUT");
+    expect(JSON.parse(b.calls[0]!.init.body as string)).toEqual({ changes: [{ key: "pv1_power_w", seconds: 10 }, { key: "battery_temp_c", seconds: null }] });
+  });
+
   it("repeats the hub's own plain words for a refused request", async () => {
     const { client } = fake(409, { error: { code: "key_change_in_progress", message: "The unit is changing its key right now. Try again in a few minutes." } });
     await expect(client.bleGrant("e1", "K")).rejects.toThrow(/changing its key right now/);

@@ -37,6 +37,11 @@ export interface AppState {
   disconnect(): void;
   /** re-reads the unit's own account of itself (after Wi-Fi or setup changes) */
   refreshUnit(): Promise<void>;
+  /** settings that were saved and only reach the running unit after a restart (shown once, as a bar, whatever page they were saved on) */
+  pendingRestart: string[];
+  needsRestart(what: string): void;
+  /** restarts the unit over Bluetooth (the link ends with it) and writes the activity log line */
+  restartUnit(): Promise<void>;
 }
 
 const Ctx = createContext<AppState | null>(null);
@@ -64,6 +69,7 @@ export function AppProvider({ userId, email, children }: { userId: string; email
   const [outcome, setOutcome] = useState<ConnectOutcome | null>(null);
   const [linkLost, setLinkLost] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingRestart, setPendingRestart] = useState<string[]>([]);
   const unitRef = useRef<ConnectedUnit | null>(null);
   unitRef.current = unit;
 
@@ -93,6 +99,7 @@ export function AppProvider({ userId, email, children }: { userId: string; email
     setLinkLost(false);
     setOffline(false);
     setDevice(null);
+    setPendingRestart([]);
     location.hash = "";
   }, []);
 
@@ -105,6 +112,7 @@ export function AppProvider({ userId, email, children }: { userId: string; email
       setConnectingId(target.id);
       setError(null);
       setLinkLost(false);
+      setPendingRestart([]);
       unitRef.current?.link.disconnect();
       try {
         const r = await connectFlow(services, target);
@@ -155,6 +163,16 @@ export function AppProvider({ userId, email, children }: { userId: string; email
     }
   }, []);
 
+  const needsRestart = useCallback((what: string) => setPendingRestart((l) => (l.includes(what) ? l : [...l, what])), []);
+
+  const restartUnit = useCallback(async () => {
+    const u = unitRef.current;
+    if (!u) throw new Error("The unit is not connected over Bluetooth.");
+    await u.link.reboot();
+    if (u.device) void services.logActivity(u.device.equipmentId, "unit_restarted", "The unit was restarted from the setup page").catch(() => undefined);
+    disconnect();
+  }, [services, disconnect]);
+
   const value = useMemo<AppState>(
     () => ({
       userId,
@@ -196,8 +214,11 @@ export function AppProvider({ userId, email, children }: { userId: string; email
       connect,
       disconnect,
       refreshUnit,
+      pendingRestart,
+      needsRestart,
+      restartUnit,
     }),
-    [userId, email, role, page, go, unit, device, offline, remembered, connecting, connectingId, outcome, linkLost, error, connect, disconnect, refreshUnit],
+    [userId, email, role, page, go, unit, device, offline, remembered, connecting, connectingId, outcome, linkLost, error, connect, disconnect, refreshUnit, pendingRestart, needsRestart, restartUnit],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -16,6 +16,13 @@ export function demoServices(): Services {
   const role = new URLSearchParams(location.search).get("role") ?? "admin";
   const level = role === "customer" ? 2 : role === "admin" ? 4 : 3;
   let intervalS = 900;
+  const rates = [
+    { key: "pv1_power_w", label: "PV1 power", unit: "W", category: "Solar", registers: [672], seconds: 30, map_s: 30 },
+    { key: "pv1_voltage_v", label: "PV1 voltage", unit: "V", category: "Solar", registers: [676], seconds: 30, map_s: 30 },
+    { key: "battery_soc_pct", label: "Battery charge", unit: "%", category: "Battery", registers: [588], seconds: 30, map_s: 30 },
+    { key: "battery_temp_c", label: "Battery temperature", unit: "°C", category: "Battery", registers: [182], seconds: 60, map_s: 60 },
+    { key: "internal_temp_c", label: "Heat sink temperature", unit: "°C", category: "Inverter", registers: [90], seconds: 60, map_s: 60 },
+  ];
   return {
     bluetoothAvailable: () => true,
     async myRole() {
@@ -100,6 +107,21 @@ export function demoServices(): Services {
     async setInterval(_id, seconds) {
       intervalS = seconds;
       return { seconds, allowed: [60, 120, 300, 600, 900, 1800, 3600] };
+    },
+    async getReadRates() {
+      return { allowed: [10, 15, 30, 60, 120, 300, 600, 900], default: 30, metrics: rates.map((r) => ({ ...r, custom: r.seconds !== r.map_s })) };
+    },
+    async setReadRates(_id, changes) {
+      let changed = 0;
+      for (const c of changes) {
+        const r = rates.find((x) => x.key === c.key);
+        const to = c.seconds ?? r?.map_s;
+        if (r && to !== undefined && to !== r.seconds) {
+          r.seconds = to;
+          changed++;
+        }
+      }
+      return { changed };
     },
     async rotationStatus() {
       return { state: "idle", rotation_id: null, started_at: null, expires_at: null, can_start: true, reason: null };

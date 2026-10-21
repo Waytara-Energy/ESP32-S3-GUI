@@ -10,8 +10,22 @@ import { Icon, Wordmark } from "@/ui";
  * connected, the page, and a footer that always shows the unit's firmware version. The page scrolls; the header and the footer stay.
  */
 export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut: () => void }) {
-  const { page, go, unit, device, role, email, offline, disconnect, closeOffline } = useApp();
+  const { page, go, unit, device, role, email, offline, disconnect, closeOffline, pendingRestart, restartUnit } = useApp();
   const [open, setOpen] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
+
+  async function restart() {
+    setRestarting(true);
+    setRestartError(null);
+    try {
+      await restartUnit();
+    } catch (e) {
+      setRestartError(e instanceof Error ? e.message : "Could not restart the unit.");
+    } finally {
+      setRestarting(false);
+    }
+  }
   const [theme, setTheme] = useState<ThemeChoice>(readTheme);
 
   useEffect(() => {
@@ -91,7 +105,7 @@ export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut:
         </aside>
         <div className={`backdrop${open ? " show" : ""}`} onClick={() => setOpen(false)} aria-hidden />
 
-        <div className="main">
+        <div className={`main${pendingRestart.length > 0 ? " has-bar" : ""}`}>
           <header className="topbar">
             <button className="btn menu-btn small" onClick={() => setOpen(true)} aria-label="Open the menu" aria-expanded={open}>
               <Icon name="menu" />
@@ -119,6 +133,24 @@ export function Shell({ children, onSignOut }: { children: ReactNode; onSignOut:
               <Icon name={dark ? "sun" : "moon"} />
             </button>
           </header>
+          {pendingRestart.length > 0 ? (
+            <div className="restartbar" role="status">
+              <div className="grow">
+                <strong>Saved: {pendingRestart.join(", ")}.</strong>{" "}
+                {unit && unit.level >= 3
+                  ? "Save everything you want to change, then restart the unit once to apply it all. Readings it has not sent yet are lost."
+                  : unit
+                    ? "The unit takes this up by itself. Restarting it needs service access."
+                    : "The unit takes this up by itself. Connect over Bluetooth to restart it and apply it at once."}
+                {restartError ? <span className="restartbar-err"> {restartError}</span> : null}
+              </div>
+              {unit && unit.level >= 3 ? (
+                <button className="btn primary small" onClick={restart} disabled={restarting}>
+                  {restarting ? "Restarting…" : "Restart the unit now"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
           <main className="content" id="main">
             {children}
           </main>

@@ -4,7 +4,7 @@ import { UnitLink } from "@/ble/unit-link";
 import { BluetoothCancelled, allowUnit, openDevice, scanCapabilities, startRadar, webBluetoothAvailable, type BluetoothDeviceLike, type ScanCapabilities } from "@/ble/web-bluetooth";
 import type { HeardUnit } from "@/lib/radar";
 import { GATEWAY_URL } from "@/lib/config";
-import { createGatewayClient, type BleGrant, type DecodedValue, type IntervalInfo, type RotationInfo } from "@/lib/gateway-api";
+import { createGatewayClient, type BleGrant, type DecodedValue, type IntervalInfo, type ReadRateChange, type ReadRates, type RotationInfo } from "@/lib/gateway-api";
 import { supabase } from "@/lib/supabase";
 
 export interface Equipment {
@@ -75,6 +75,8 @@ export interface Services {
   decode(equipmentId: string, blocks: [number, string][]): Promise<DecodedValue[]>;
   getInterval(equipmentId: string): Promise<IntervalInfo>;
   setInterval(equipmentId: string, seconds: number): Promise<IntervalInfo>;
+  getReadRates(equipmentId: string): Promise<ReadRates>;
+  setReadRates(equipmentId: string, changes: ReadRateChange[]): Promise<{ changed: number }>;
   rotationStatus(equipmentId: string): Promise<RotationInfo>;
   startRotation(equipmentId: string): Promise<RotationInfo>;
   activity(equipmentId: string): Promise<ActivityRow[]>;
@@ -160,6 +162,8 @@ export const realServices: Services = {
   decode: (equipmentId, blocks) => gateway.decode(equipmentId, blocks),
   getInterval: (equipmentId) => gateway.getInterval(equipmentId),
   setInterval: (equipmentId, seconds) => gateway.setInterval(equipmentId, seconds),
+  getReadRates: (equipmentId) => gateway.getReadRates(equipmentId),
+  setReadRates: (equipmentId, changes) => gateway.setReadRates(equipmentId, changes),
   rotationStatus: (equipmentId) => gateway.rotationStatus(equipmentId),
   startRotation: (equipmentId) => gateway.startRotation(equipmentId),
   async activity(equipmentId) {

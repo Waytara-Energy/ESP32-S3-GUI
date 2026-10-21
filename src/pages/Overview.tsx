@@ -3,7 +3,6 @@ import { Group, Page, Pill, Row, Tile, Tiles, yesNo } from "@/components/kit";
 import { signalLabel } from "@/lib/messages";
 import { levelName, roleName } from "@/lib/roles";
 import { uptimeText, useUnitStatus } from "@/lib/use-status";
-import { useServices } from "@/services";
 import { useApp } from "@/state";
 import { Notice, Spinner } from "@/ui";
 
@@ -16,8 +15,7 @@ const WHAT_LEVEL: Record<number, string> = {
 
 /** Everything about the unit and its connections on one page, refreshed every few seconds. */
 export function Overview() {
-  const services = useServices();
-  const { unit, device, email, role, disconnect } = useApp();
+  const { unit, device, email, role, restartUnit } = useApp();
   const { status: s } = useUnitStatus(unit?.link);
   const [confirming, setConfirming] = useState(false);
   const [restarting, setRestarting] = useState(false);
@@ -31,13 +29,10 @@ export function Overview() {
   const sig = typeof rssi === "number" ? signalLabel(rssi) : null;
 
   async function restart() {
-    if (!unit) return;
     setRestarting(true);
     setError(null);
     try {
-      await unit.link.reboot();
-      if (device) void services.logActivity(device.equipmentId, "unit_restarted", "The unit was restarted from the setup page").catch(() => undefined);
-      disconnect();
+      await restartUnit();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not restart the unit.");
       setRestarting(false);
