@@ -147,6 +147,50 @@ export interface ClaimResult {
 
 type Answer = { n: number; ok: boolean; why?: string } & Record<string, unknown>;
 
+export type UplinkMode = "wifi" | "sim" | "auto";
+
+/** How the unit reaches the internet, and the state of its SIM (the `net` command). */
+export interface NetState {
+  uplink: UplinkMode;
+  apn: string;
+  wifi: boolean;
+  sim_running: boolean;
+  sim_up: boolean;
+  sim_state: string;
+  sim_operator: string;
+  /** signal quality 0 to 31 (99 = unknown) */
+  sim_csq: number;
+  /** only the last four digits of the card number leave the unit */
+  sim_card: string;
+  sim_ip: string;
+  sim_attempts: number;
+  sim_failures: number;
+  ev: boolean;
+}
+
+/** The unit's own Wi-Fi network for EV chargers, and what its charger has said so far (the `ev_*` commands). */
+export interface EvInfo {
+  enabled: boolean;
+  ssid?: string;
+  password?: string;
+  ip?: string;
+  /** the charger name that is let in: the last part of the address */
+  cp?: string;
+  url?: string;
+  connected: boolean;
+  vendor: string;
+  model: string;
+  status: string;
+  boots: number;
+  heartbeats: number;
+  meter_values: number;
+  frames_up: number;
+  frames_down: number;
+  /** seconds since the charger last said anything, -1 = never */
+  last_message_age_s: number;
+  hub_link: boolean;
+}
+
 export class UnitLink {
   private key: CryptoKey | null = null;
   private txCounter = 0n;
@@ -337,6 +381,24 @@ export class UnitLink {
   }
   async forgetNetworks(ssid?: string): Promise<void> {
     await this.ask("forget", ssid ? { ssid } : {});
+  }
+  net(): Promise<NetState> {
+    return this.ask<NetState>("net");
+  }
+  /** Saves how the unit goes online. It restarts after this session (the unit says so by itself). */
+  async setUplink(mode: UplinkMode, apn: string, pin: string): Promise<void> {
+    await this.ask("uplink", { mode, apn, ...(pin ? { pin } : {}) });
+  }
+  /** Opens the unit's charger network and server for one charger name (the unit makes one when none is given). */
+  evOpen(cp?: string): Promise<{ ssid: string; password: string; ip: string; cp: string; url: string }> {
+    return this.ask("ev_open", cp ? { cp } : {});
+  }
+  evState(): Promise<EvInfo> {
+    return this.ask<EvInfo>("ev_state");
+  }
+  /** Takes the charger network and server down and forgets the charger. */
+  async evClose(): Promise<void> {
+    await this.ask("ev_close");
   }
   checks(): Promise<CheckReport> {
     return this.ask<CheckReport>("checks", {}, 90_000);

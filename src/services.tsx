@@ -4,7 +4,7 @@ import { UnitLink } from "@/ble/unit-link";
 import { BluetoothCancelled, allowUnit, openDevice, scanCapabilities, startRadar, webBluetoothAvailable, type BluetoothDeviceLike, type ScanCapabilities } from "@/ble/web-bluetooth";
 import type { HeardUnit } from "@/lib/radar";
 import { GATEWAY_URL } from "@/lib/config";
-import { createGatewayClient, type BleGrant, type DecodedValue, type IntervalInfo, type ReadRateChange, type ReadRates, type RotationInfo } from "@/lib/gateway-api";
+import { createGatewayClient, type BleGrant, type ChargerInfo, type DecodedValue, type IntervalInfo, type ReadRateChange, type ReadRates, type RotationInfo } from "@/lib/gateway-api";
 import { supabase } from "@/lib/supabase";
 
 export interface Equipment {
@@ -71,6 +71,10 @@ export interface Services {
   requestGrant(equipmentId: string, unitPublicKey: string): Promise<BleGrant>;
   /** a single-use ticket for this unit and this device, valid 15 minutes */
   issueTicket(equipmentId: string, hardwareId: string): Promise<string>;
+  /** the EV chargers added to this unit, and whether WayTara is connected to each */
+  chargers(equipmentId: string): Promise<ChargerInfo[]>;
+  addCharger(equipmentId: string, a: { charge_point_id: string; label?: string }): Promise<{ equipment_id: string; charge_point_id: string; label: string | null }>;
+  removeCharger(equipmentId: string, chargePointId: string): Promise<boolean>;
   /** raw live register blocks as values (the hub decodes) */
   decode(equipmentId: string, blocks: [number, string][]): Promise<DecodedValue[]>;
   getInterval(equipmentId: string): Promise<IntervalInfo>;
@@ -159,6 +163,9 @@ export const realServices: Services = {
   async issueTicket(equipmentId, hardwareId) {
     return (await gateway.issueClaimTicket(equipmentId, hardwareId)).ticket;
   },
+  chargers: (equipmentId) => gateway.chargers(equipmentId),
+  addCharger: (equipmentId, a) => gateway.addCharger(equipmentId, a),
+  removeCharger: (equipmentId, cp) => gateway.removeCharger(equipmentId, cp),
   decode: (equipmentId, blocks) => gateway.decode(equipmentId, blocks),
   getInterval: (equipmentId) => gateway.getInterval(equipmentId),
   setInterval: (equipmentId, seconds) => gateway.setInterval(equipmentId, seconds),

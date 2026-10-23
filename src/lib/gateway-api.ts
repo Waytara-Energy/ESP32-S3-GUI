@@ -82,11 +82,20 @@ export interface RotationInfo {
   reason: string | null;
 }
 
+/** A charger added to a unit: its equipment, the name in its address, and whether WayTara is connected to it right now. */
+export interface ChargerInfo {
+  equipment_id: string;
+  charge_point_id: string;
+  label: string | null;
+  connected: boolean;
+  last_message_at: string | null;
+}
+
 export function createGatewayClient(o: GatewayClientOptions) {
   const base = o.baseUrl.replace(/\/+$/, "");
   const doFetch = o.fetch ?? ((...a: Parameters<typeof fetch>) => fetch(...a));
 
-  async function call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
+  async function call<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
     const token = await o.getToken();
     if (!token) throw new GatewayApiError(401, plainMessage(401));
     let res: Response;
@@ -122,6 +131,17 @@ export function createGatewayClient(o: GatewayClientOptions) {
     /** A single-use ticket (valid 15 minutes) that lets one board, named by its hardware id, collect the key of this equipment. */
     issueClaimTicket(equipmentId: string, hardwareId: string): Promise<{ ticket: string; expires_at: string }> {
       return call("POST", `${eq(equipmentId)}/claim-tickets`, { hardware_id: hardwareId });
+    },
+    /** The EV chargers added to this unit. */
+    async chargers(gatewayId: string): Promise<ChargerInfo[]> {
+      return (await call<{ chargers: ChargerInfo[] }>("GET", `/v1/ev/gateways/${encodeURIComponent(gatewayId)}/chargers`)).chargers;
+    },
+    /** Adds a charger to this unit (a new charger device at the unit's site), under the name in its address. */
+    addCharger(gatewayId: string, body: { charge_point_id: string; label?: string }): Promise<{ equipment_id: string; charge_point_id: string; label: string | null }> {
+      return call("POST", `/v1/ev/gateways/${encodeURIComponent(gatewayId)}/chargers`, body);
+    },
+    async removeCharger(gatewayId: string, chargePointId: string): Promise<boolean> {
+      return (await call<{ removed: boolean }>("DELETE", `/v1/ev/gateways/${encodeURIComponent(gatewayId)}/chargers/${encodeURIComponent(chargePointId)}`)).removed;
     },
     /** A pass (two minutes) for this person to talk to this unit over Bluetooth, valid only on the connection whose public key is given. */
     bleGrant(equipmentId: string, unitPublicKey: string): Promise<BleGrant> {

@@ -91,7 +91,8 @@ export async function fakeUnit(
 /** The lowest access level each command needs, as in the firmware (ble_setup.cpp). */
 export function minLevel(c: string): number {
   if (c === "ping" || c === "auth" || c === "close") return 0;
-  if (c === "info" || c === "status" || c === "live") return 1;
+  if (c === "info" || c === "status" || c === "live" || c === "net") return 1;
+  if (c === "uplink" || c === "ev_open" || c === "ev_state" || c === "ev_close") return 2;
   if (c === "logs" || c === "map") return 3;
   if (c === "scan" || c === "wifi" || c === "forget") return 2;
   if (c === "checks" || c === "speed" || c === "hub" || c === "reboot") return 3;
@@ -137,6 +138,16 @@ export function defaults(c: string, req: Record<string, unknown>): Record<string
       return { steps: [{ name: "wifi", ok: true, skipped: false, ms: 5, detail: "connected" }], all_ok: true };
     case "claim":
       return { equipment_id: "eq-1", key_id: "key-1" };
+    case "net":
+      return { uplink: "sim", apn: "airtelgprs.com", wifi: false, sim_running: true, sim_up: true, sim_state: "up", sim_operator: "40440", sim_csq: 28, sim_card: "…3165", sim_ip: "100.103.223.218", sim_attempts: 1, sim_failures: 0, ev: false };
+    case "uplink":
+      return {};
+    case "ev_open":
+      return { ssid: "WAYTARA-EV-05D0", password: "kT7mPq3Xw9Ns", ip: "192.168.4.1", cp: "WT-05D0", url: "ws://192.168.4.1:8080/ocpp/WT-05D0" };
+    case "ev_state":
+      return { enabled: true, ssid: "WAYTARA-EV-05D0", password: "kT7mPq3Xw9Ns", ip: "192.168.4.1", cp: "WT-05D0", url: "ws://192.168.4.1:8080/ocpp/WT-05D0", connected: true, vendor: "Plugzmart", model: "7.4kW AC", status: "Available", boots: 1, heartbeats: 2, meter_values: 0, frames_up: 6, frames_down: 6, last_message_age_s: 4, hub_link: true };
+    case "ev_close":
+      return {};
     default:
       return {};
   }

@@ -5,6 +5,8 @@ import { supabase } from "@/lib/supabase";
 import { applyTheme, readTheme } from "@/lib/theme";
 import { Activity } from "@/pages/Activity";
 import { DeviceName } from "@/pages/DeviceName";
+import { Chargers } from "@/pages/Chargers";
+import { Internet } from "@/pages/Internet";
 import { Interval } from "@/pages/Interval";
 import { Key } from "@/pages/Key";
 import { Live } from "@/pages/Live";
@@ -49,6 +51,10 @@ function Page() {
       return <Status />;
     case "network":
       return <Network />;
+    case "internet":
+      return <Internet />;
+    case "chargers":
+      return <Chargers />;
     case "live":
       return <Live />;
     case "map":

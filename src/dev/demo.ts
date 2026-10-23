@@ -16,6 +16,7 @@ export function demoServices(): Services {
   const role = new URLSearchParams(location.search).get("role") ?? "admin";
   const level = role === "customer" ? 2 : role === "admin" ? 4 : 3;
   let intervalS = 900;
+  let chargerList: { equipment_id: string; charge_point_id: string; label: string | null; connected: boolean; last_message_at: string | null }[] = [];
   const rates = [
     { key: "pv1_power_w", label: "PV1 power", unit: "W", category: "Solar", registers: [672], seconds: 30, map_s: 30 },
     { key: "pv1_voltage_v", label: "PV1 voltage", unit: "V", category: "Solar", registers: [676], seconds: 30, map_s: 30 },
@@ -91,6 +92,19 @@ export function demoServices(): Services {
     async issueTicket() {
       await pause(500);
       return "99999999-9999-4999-8999-999999999999";
+    },
+    async chargers() {
+      await pause(200);
+      return chargerList;
+    },
+    async addCharger(_id, a) {
+      await pause(400);
+      chargerList = [{ equipment_id: "ch-1", charge_point_id: a.charge_point_id, label: a.label ?? "EV charger", connected: true, last_message_at: new Date().toISOString() }];
+      return { equipment_id: "ch-1", charge_point_id: a.charge_point_id, label: a.label ?? "EV charger" };
+    },
+    async removeCharger() {
+      chargerList = [];
+      return true;
     },
     async decode() {
       await pause(150);

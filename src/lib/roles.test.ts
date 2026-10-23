@@ -40,6 +40,6 @@ describe("which pages each person can open", () => {
     expect(isStaff(null)).toBe(false);
     expect(levelName(3)).toBe("Service");
     expect(levelName(9)).toBe("No access");
-    expect(groups(NAV).map((g) => g.name)).toEqual(["Find", "Device", "Connectivity", "Data", "Configuration", "Diagnostics"]);
+    expect(groups(NAV).map((g) => g.name)).toEqual(["Find", "Device", "Connectivity", "Devices", "Data", "Configuration", "Diagnostics"]);
   });
 });
