@@ -39,6 +39,7 @@ export function Chargers() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
+  const [restarting, setRestarting] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!link) return;
@@ -84,6 +85,8 @@ export function Chargers() {
         }
       }
       setAdding(false);
+      // the unit opens the network after a restart when its memory is short right now: say so, the page reconnects with it
+      setRestarting(open.restart === true);
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not set the charger up.");
@@ -124,6 +127,7 @@ export function Chargers() {
     <Page title="EV chargers" sub="An EV charger connects to the unit's own Wi-Fi network (it does not need your internet). The unit passes its messages to WayTara, so you see the charger's data and can start and stop charging.">
       {!canEdit ? <Notice kind="warn">Your access lets you look at the unit but not add chargers.</Notice> : null}
       {error ? <Notice kind="bad">{error}</Notice> : null}
+      {restarting ? <Notice kind="info">The unit restarts in a moment to open the charger network. Connect to it again in about a minute; the address below stays the same.</Notice> : null}
 
       {!showWizard ? (
         <Group title="Chargers on this unit">

@@ -390,7 +390,7 @@ export class UnitLink {
     await this.ask("uplink", { mode, apn, ...(pin ? { pin } : {}) });
   }
   /** Opens the unit's charger network and server for one charger name (the unit makes one when none is given). */
-  evOpen(cp?: string): Promise<{ ssid: string; password: string; ip: string; cp: string; url: string }> {
+  evOpen(cp?: string): Promise<{ ssid: string; password: string; ip: string; cp: string; url: string; restart?: boolean }> {
     return this.ask("ev_open", cp ? { cp } : {});
   }
   evState(): Promise<EvInfo> {
