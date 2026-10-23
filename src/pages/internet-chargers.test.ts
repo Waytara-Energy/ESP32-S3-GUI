@@ -64,8 +64,8 @@ describe("the charger tests", () => {
 });
 
 describe("who may open the new pages", () => {
-  it("offers Internet to anyone connected to a unit and EV chargers once a device is known", () => {
-    const internet = NAV.find((n) => n.id === "internet")!;
+  it("offers Network (with the SIM in it) to anyone connected to a unit and EV chargers once a device is known", () => {
+    const internet = NAV.find((n) => n.id === "network")!;
     const chargers = NAV.find((n) => n.id === "chargers")!;
     expect(canOpen(internet, { level: 1, role: "customer", hasDevice: false }).ok).toBe(true);
     expect(canOpen(chargers, { level: 2, role: "customer", hasDevice: false })).toMatchObject({ ok: false });

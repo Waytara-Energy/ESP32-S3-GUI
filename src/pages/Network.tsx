@@ -6,6 +6,7 @@ import { useUnitStatus } from "@/lib/use-status";
 import { useServices } from "@/services";
 import { useApp } from "@/state";
 import { Notice, SignalBars, Spinner } from "@/ui";
+import { InternetSection } from "@/pages/Internet";
 
 /** One row per network name, the strongest first. */
 export function tidyNetworks(list: Net[]): Net[] {
@@ -110,6 +111,8 @@ export function Network() {
           </>
         ) : null}
       </Group>
+
+      <InternetSection />
 
       <Group title="Saved networks" note="The unit tries them in this order when it loses its connection. The one you join last goes first.">
         {state?.saved && state.saved.length > 0 ? (

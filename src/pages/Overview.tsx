@@ -74,7 +74,8 @@ export function Overview() {
       </Group>
 
       <Group title="Connection">
-        <Row label="Wi-Fi">{wifi === undefined ? <Pill>Checking</Pill> : wifi ? <span>{ssid}</span> : <Pill tone="bad">Not connected</Pill>}</Row>
+        <Row label="Wi-Fi">{wifi === undefined ? <Pill>Checking</Pill> : wifi ? <span>{ssid}</span> : s?.sim_up ? <Pill tone="muted">Not used (the unit is online by SIM)</Pill> : <Pill tone="bad">Not connected</Pill>}</Row>
+        {s?.sim_up ? <Row label="SIM">{`${s.sim_operator ?? "Online"} · signal ${s.sim_csq ?? "?"}/31`}</Row> : null}
         {wifi && s ? <Row label="Channel and address" mono value={`channel ${s.channel} · ${s.ip}`} /> : null}
         <Row label="WayTara server" mono value={s?.hub ?? st?.hub} />
         <Row label="Link to the server">{hubLink === undefined ? <Pill>Checking</Pill> : yesNo(hubLink, "Connected", "Not connected")}</Row>

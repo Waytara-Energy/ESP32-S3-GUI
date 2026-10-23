@@ -42,7 +42,7 @@ export function Status() {
         <>
           <Tiles>
             <Tile label="WayTara server" value={s.hub_link ? "Online" : "Offline"} tone={s.hub_link ? "ok" : "bad"} sub={s.hub} />
-            <Tile label="Wi-Fi" value={s.wifi ? s.ssid ?? "Connected" : "Not connected"} tone={s.wifi ? "ok" : "bad"} sub={sig ? `${sig.label} (${s.rssi} dBm)` : undefined} />
+            <Tile label={s.sim_up && !s.wifi ? "Internet" : "Wi-Fi"} value={s.wifi ? s.ssid ?? "Connected" : s.sim_up ? `SIM · ${s.sim_operator ?? "online"}` : "Not connected"} tone={s.wifi || s.sim_up ? "ok" : "bad"} sub={s.wifi && sig ? `${sig.label} (${s.rssi} dBm)` : undefined} />
             <Tile label="Inverter" value={s.inverter_online ? "Answering" : "Silent"} tone={s.inverter_online ? "ok" : "warn"} sub={s.inverter_online ? `Last read ${s.last_ok_age_s} s ago` : "No answer in 30 s"} />
             <Tile label="Running for" value={uptimeText(s.uptime_s)} sub={`Start number ${s.boot}`} />
           </Tiles>

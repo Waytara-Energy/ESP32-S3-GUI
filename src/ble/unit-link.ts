@@ -90,6 +90,11 @@ export interface UnitStatus {
   boot: number;
   uptime_s: number;
   wifi: boolean;
+  /** the unit is online through its SIM */
+  sim_up?: boolean;
+  uplink?: string;
+  sim_operator?: string;
+  sim_csq?: number;
   ssid?: string;
   rssi?: number;
   channel?: number;

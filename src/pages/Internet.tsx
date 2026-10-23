@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { NetState, UplinkMode } from "@/ble/unit-link";
-import { Group, Page, Pill, Row, Segmented } from "@/components/kit";
+import { Group, Pill, Row, Segmented } from "@/components/kit";
 import { useApp } from "@/state";
 import { Notice, Spinner } from "@/ui";
 
@@ -34,7 +34,7 @@ const MODE_TEXT: Record<UplinkMode, string> = {
 };
 
 /** How the unit reaches the internet: Wi-Fi, its SIM card, or Wi-Fi first with the SIM as the backup. */
-export function Internet() {
+export function InternetSection() {
   const { unit, needsRestart } = useApp();
   const link = unit?.link;
   const canEdit = (unit?.level ?? 0) >= 2;
@@ -94,8 +94,8 @@ export function Internet() {
 
   const sig = net ? simSignal(net.sim_csq) : null;
   return (
-    <Page title="Internet" sub="How the unit reaches WayTara: through a Wi-Fi network, or through a SIM card in the unit's 4G module.">
-      <Group title="Connected now">
+    <>
+      <Group title="SIM card (4G)" note="How the unit reaches WayTara: through a Wi-Fi network, or through a SIM card in the unit's 4G module.">
         <Row label="Wi-Fi">{net ? net.wifi ? <Pill tone="ok">Connected</Pill> : <Pill tone="muted">Not in use</Pill> : "–"}</Row>
         <Row label="SIM card" hint={net && net.sim_state ? net.sim_state : undefined}>
           {net ? net.sim_up ? <Pill tone="ok">Online</Pill> : net.sim_running ? <Pill tone="warn">Connecting</Pill> : <Pill tone="muted">Not in use</Pill> : "–"}
@@ -152,6 +152,6 @@ export function Internet() {
           </div>
         </Group>
       )}
-    </Page>
+    </>
   );
 }
