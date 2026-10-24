@@ -65,6 +65,7 @@ export function Chargers() {
 
   if (!unit || !link) return null;
   const running = ev?.enabled === true;
+  const lan = ev?.mode === "lan";
   const mine = list.find((c) => ev?.cp && c.charge_point_id === ev.cp);
   const showWizard = running || adding;
 
@@ -124,7 +125,7 @@ export function Chargers() {
   const allOk = tests.every((t) => t.ok);
 
   return (
-    <Page title="EV chargers" sub="An EV charger connects to the unit's own Wi-Fi network (it does not need your internet). The unit passes its messages to WayTara, so you see the charger's data and can start and stop charging.">
+    <Page title="EV chargers" sub={lan ? "The charger joins the same Wi-Fi network as the unit. The unit passes its messages to WayTara, so you see the charger's data and can start and stop charging." : "An EV charger connects to the unit's own Wi-Fi network (it does not need your internet). The unit passes its messages to WayTara, so you see the charger's data and can start and stop charging."}>
       {!canEdit ? <Notice kind="warn">Your access lets you look at the unit but not add chargers.</Notice> : null}
       {error ? <Notice kind="bad">{error}</Notice> : null}
       {restarting ? <Notice kind="info">The unit restarts in a moment to open the charger network. Connect to it again in about a minute; the address below stays the same.</Notice> : null}
@@ -166,15 +167,18 @@ export function Chargers() {
 
       {running && ev ? (
         <>
-          <Group title="1. Connect the charger" note="In the charger's own app or web page: join this Wi-Fi network, then set the charger's server address (OCPP / CSMS URL) to the address below. Some chargers ask for the name and the address separately: the name is the last part of the address.">
-            <Row label="Wi-Fi network" mono value={ev.ssid} />
-            <Row label="Wi-Fi password">
-              <span className="mono">{ev.password}</span>{" "}
-              <button className="btn small link" onClick={() => void copy("pw", ev.password ?? "")}>
-                {copied === "pw" ? "Copied" : "Copy"}
-              </button>
-            </Row>
-            <Row label="Server address" hint="Plain ws:// is right here: the network is private to the unit.">
+          <Group title="1. Connect the charger" note={lan ? "In the charger's own app or web page: join the same Wi-Fi network as the unit (shown below), then set the charger's server address (OCPP / CSMS URL) to the address below. Some chargers ask for the name and the address separately: the name is the last part of the address." : "In the charger's own app or web page: join this Wi-Fi network, then set the charger's server address (OCPP / CSMS URL) to the address below. Some chargers ask for the name and the address separately: the name is the last part of the address."}>
+            <Row label={lan ? "Wi-Fi network (the one the unit has joined)" : "Wi-Fi network"} mono value={ev.ssid} />
+            {lan ? null : (
+              <Row label="Wi-Fi password">
+                <span className="mono">{ev.password}</span>{" "}
+                <button className="btn small link" onClick={() => void copy("pw", ev.password ?? "")}>
+                  {copied === "pw" ? "Copied" : "Copy"}
+                </button>
+              </Row>
+            )}
+            {!lan && typeof ev.stations === "number" ? <Row label="Devices on the unit's Wi-Fi" hint="Zero while the charger has not joined the network." value={String(ev.stations)} /> : null}
+            <Row label="Server address" hint={lan ? "This is the unit's address on that Wi-Fi right now. It is read from the unit each time you open this page: copy it into the charger. Ask the router to always give the unit the same address (a DHCP reservation), or the charger stops finding it when the address changes." : "Plain ws:// is right here: the network is private to the unit."}>
               <span className="mono" style={{ wordBreak: "break-all" }}>{ev.url}</span>{" "}
               <button className="btn small link" onClick={() => void copy("url", ev.url ?? "")}>
                 {copied === "url" ? "Copied" : "Copy"}

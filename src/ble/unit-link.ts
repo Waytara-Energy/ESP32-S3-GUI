@@ -178,6 +178,10 @@ export interface EvInfo {
   enabled: boolean;
   ssid?: string;
   password?: string;
+  /** "own": the unit's own Wi-Fi (it is online by SIM); "lan": the charger joins the Wi-Fi the unit has joined. Older firmware says nothing: own. */
+  mode?: "own" | "lan";
+  /** devices on the unit's own Wi-Fi right now (own mode) */
+  stations?: number;
   ip?: string;
   /** the charger name that is let in: the last part of the address */
   cp?: string;
